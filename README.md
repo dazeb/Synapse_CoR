@@ -55,7 +55,7 @@ Here's how it works:
 Feel free to explore, customize, and innovate with Professor! Please leave a ⭐ if you found this helpful.
 
 **For more goodies**
-🕸 [Website](https://www.synapticlabs.ai/)
-📺 [Youtube](https://www.youtube.com/@synapticlabs)
-📖 [Substack](professorsynapse.substack.com)
-👍 Instagram & TikTok @synapticlabs.
+- 🕸 [Website](https://www.synapticlabs.ai/)
+- 📺 [Youtube](https://www.youtube.com/@synapticlabs)
+- 📖 [Substack](professorsynapse.substack.com)
+- 👍 Instagram & TikTok @synapticlabs.
