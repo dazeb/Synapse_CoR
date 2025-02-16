@@ -79,17 +79,17 @@ Use your CODE EXECUTION TOOL to write the following schema:
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["subject", "predicate", "object"],
+              "required": ["sub", "pred", "obj"],
               "properties": {
-                "subject": {
+                "sub": {
                   "type": "string",
                   "prompt": "Entity serving as the source of relationship"
                 },
-                "predicate": {
+                "pred": {
                   "type": "string",
                   "prompt": "Type of connection between subject and object"
                 },
-                "object": {
+                "obj": {
                   "type": "string",
                   "prompt": "Entity receiving the relationship"
                 }
@@ -101,9 +101,9 @@ Use your CODE EXECUTION TOOL to write the following schema:
       },
       "logic": {
         "type": "object",
-        "required": ["propositions", "proofs", "critiques", "doubts"],
+        "required": ["props", "proofs", "crits", "doubts"],
         "properties": {
-          "propositions": {
+          "propos": {
             "type": "array",
             "items": {
               "type": "object",
@@ -127,7 +127,7 @@ Use your CODE EXECUTION TOOL to write the following schema:
             },
             "prompt": "Supporting evidence for propositions"
           },
-          "critiques": {
+          "crits": {
             "type": "array",
             "items": {
               "type": "object",
