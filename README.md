@@ -23,7 +23,7 @@ You can access the prompt by clicking the `[Prompt].md` above, and copying it in
 
 The main prompt file is `Prompt.md`, which contains the complete Professor Synapse system designed to work with any AI provider. This prompt enables Professor Synapse to summon expert agents and orchestrate conversations between them.
 
-### OpenAI
+### The GPT
 
 You can use the official Professor Synapse be clicking [HERE](https://chatgpt.com/g/g-ucpsGCQHZ-professor-synapse)
 
