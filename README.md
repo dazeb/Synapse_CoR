@@ -2,28 +2,26 @@
 
 > **TL;DR** | 
 > ---
-> Professor Synapse 🧙🏾‍♂️ is an AI guide designed to help users achieve their goals using a unique reasoning method called the **Graph of Reason (GoR)**. It gathers context, aligns with user preferences, and offers step-by-step strategies to support goal accomplishment. Interactions are enhanced with Python code interpretation for structured guidance.
+> Professor Synapse 🧙🏾‍♂️ is a wise AI guide that helps users achieve their goals by summoning expert agents perfectly suited to their tasks. It gathers context, aligns with user preferences, and creates specialized agents using a structured template to provide targeted expertise and step-by-step guidance.
 
 ## Introduction
 
-**Professor Synapse 🧙🏾‍♂️** is an AI-based guide designed to help users achieve their goals by leveraging the power of structured reasoning and user alignment. Through the **Graph of Reason (CoR)**, it analyzes user input, gathers context, and offers personalized guidance.
+**Professor Synapse 🧙🏾‍♂️** is a wise AI guide that helps users achieve their goals by summoning expert agents perfectly suited to their specific tasks. It gathers context about your goals, then creates and orchestrates specialized agents using a structured template to provide targeted expertise and actionable guidance.
 
 ---
 ## Features
 
-+ **Graph of Reason (GoR):** A unique reasoning method that structures responses as code, providing clear, step-by-step guidance.
-+ **Contextual Understanding:** Gathers detailed information about user goals and preferences.
-+ **User-Friendly Interaction:** Engages users with a friendly and patient persona.
++ **Expert Agent Summoning:** Creates specialized agents tailored to your specific task and domain using a structured template.
++ **Contextual Understanding:** Gathers detailed information about user goals and preferences through targeted questions.
++ **Orchestrated Conversations:** Maintains clear communication between Professor Synapse and summoned agents using a defined conversation pattern.
++ **Wise Guidance:** Provides critical yet respectful challenges to help users think deeply about their goals.
 
 ---
 ## Usage
 
-You can access the prompt by clicking the `[prompt].txt` above, and copying it into your text editor of choice. 
+You can access the prompt by clicking the `[Prompt].md` above, and copying it into your text editor of choice. 
 
-There are slightly different version of the prompt:
-1. **Custom Instructions**: This version is shorter, so it will fit in ChatGPTs custom instructions.
-2. **GPT Prompt**: This is the prompt that is currently accessible in the ChatGPT GPT, using the link in the `OpenAI` section.
-3. **Prompt**: This is the prompt to use for any other provider except ChatGPT.
+The main prompt file is `Prompt.md`, which contains the complete Professor Synapse system designed to work with any AI provider. This prompt enables Professor Synapse to summon expert agents and orchestrate conversations between them.
 
 ### OpenAI
 
@@ -34,24 +32,26 @@ If you'd like to edit and use Professor Synapse as your own GPT, follow these st
 1. **Open ChatGPT**: Ensure you have access to OpenAI's ChatGPT.
 2. **Create a GPT**: Go to the [GPT Editor](https://chatgpt.com/gpts/editor) and paste the prompt into your instructions.
 3. **Edit**: Feel free to edit the prompt, but focus on the personality, name, persona if you're new to prompting.
-4. **Start Interacting**: Create a conversation starter `/start`. Begin a new chat and initiate with the command `/start`.
+4. **Start Interacting**: Begin a new chat and tell Professor Synapse what you want to accomplish. It will introduce itself and begin gathering context about your goals.
 
 ---
 ## Interaction Expectations
 
-Professor Synapse utilizes the **Graph of Reason (CoR)** to help you achieve your goals. 
+Professor Synapse uses a structured approach to help you achieve your goals through expert agent summoning and orchestration.
 
 Here's how it works:
 
-1. **Initialization**:
-   - Begin the interaction with the command `/start`.
-   - Professor Synapse will introduce itself and ask about your goals.
+1. **Introduction**:
+   - Professor Synapse introduces itself with a friendly greeting and asks what you want to accomplish.
 
-2. **Gathering Context**:
-   - Professor Synapse will ask questions to understand your goals, preferences, and context.
+2. **Context Gathering**:
+   - Professor Synapse asks targeted questions to understand your goals, preferences, and context.
 
-3. **Graph of Reason (GoR) Analysis**:
-   - Every response is preceded by a GoR analysis using the Canvas tool, which you can view to understand how Professor Synapse is reasoning about your problem.
+3. **Agent Summoning**:
+   - Once context is gathered, Professor Synapse creates an expert agent specifically suited to your task using a structured template.
+
+4. **Orchestrated Conversation**:
+   - Professor Synapse maintains a clear conversation pattern, delegating tasks to the expert agent while providing guidance and alignment.
 
 ## Contributions and Support
 
@@ -61,4 +61,4 @@ Feel free to explore, customize, and innovate with Professor! Please leave a ⭐
 🕸 [Website](https://www.synapticlabs.ai/)
 📺 [Youtube](https://www.youtube.com/@synapticlabs)
 📖 [Substack](professorsynapse.substack.com)
-👍 Instagram & TikTok @synapticlabs.
+👍 Instagram @synapticlabs.
