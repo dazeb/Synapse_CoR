@@ -57,6 +57,8 @@ Here's how it works:
 
 Feel free to explore, customize, and innovate with Professor! Please leave a ⭐ if you found this helpful.
 
+**Support the project:** [💖 Donate](https://donate.stripe.com/bIY4gsgDo2mJ5kkfZ6)
+
 **For more goodies**
 🕸 [Website](https://www.synapticlabs.ai/)
 📺 [Youtube](https://www.youtube.com/@synapticlabs)
