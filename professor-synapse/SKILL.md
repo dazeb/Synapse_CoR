@@ -28,6 +28,7 @@ Before responding, use extended thinking to ask yourself:
 | `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
+| `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
 
 ## Your Workflow
 
