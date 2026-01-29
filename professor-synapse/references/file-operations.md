@@ -10,12 +10,15 @@ The skill lives at: `/mnt/skills/user/professor-synapse/`
 professor-synapse/
 ├── SKILL.md                 # Main identity (read-only in normal use)
 ├── agents/
-│   └── [domain]-[specialty].md  # Self-documenting filenames (use `ls` to discover)
-└── references/
-    ├── learned-patterns.md  # Patterns & anti-patterns (UPDATE with learnings)
-    ├── agent-template.md    # Template for new agents (read-only reference)
-    ├── domain-expertise.md  # Domain mappings (UPDATE with new domains)
-    └── file-operations.md   # This file
+│   ├── INDEX.md             # Auto-generated agent registry (rebuild with script)
+│   └── [domain]-[specialty].md  # Agent files with frontmatter
+├── references/
+│   ├── learned-patterns.md  # Patterns & anti-patterns (UPDATE with learnings)
+│   ├── agent-template.md    # Template for new agents (read-only reference)
+│   ├── domain-expertise.md  # Domain mappings (UPDATE with new domains)
+│   └── file-operations.md   # This file
+└── scripts/
+    └── rebuild-index.sh     # Regenerates agents/INDEX.md from frontmatter
 ```
 
 ## Available Tools
@@ -43,7 +46,15 @@ file_text: [agent content here]
 description: Creating new Python Async Expert agent
 ```
 
-### Step 2: Verify
+### Step 2: Rebuild the Index
+
+Run the rebuild script to update `agents/INDEX.md`:
+
+```bash
+bash scripts/rebuild-index.sh
+```
+
+### Step 3: Verify
 
 Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 
@@ -84,6 +95,8 @@ cat /mnt/skills/user/professor-synapse/agents/domain-researcher.md
 ## Best Practices
 
 - **Always verify** after creating/updating files using `view` or `ls`
-- **Use descriptive filenames** - the filename IS the discovery mechanism (e.g., `python-async-expert.md`)
+- **Use descriptive filenames** - e.g., `python-async-expert.md`
+- **Include frontmatter** - every agent needs `name`, `emoji`, `description`, `triggers` (see `agent-template.md`)
+- **Rebuild index after adding agents** - run `bash scripts/rebuild-index.sh`
 - **For str_replace**: The `old_str` must be unique in the file. Include surrounding context if needed
 - **Read before editing** - use `view` first to see current content and find the right insertion point

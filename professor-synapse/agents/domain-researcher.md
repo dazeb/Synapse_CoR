@@ -1,3 +1,10 @@
+---
+name: Domain Researcher
+emoji: 🔎
+description: Research agent summoned before creating new domain experts. Browses web to gather best practices, frameworks, and terminology.
+triggers: research, create agent, new domain, unfamiliar topic
+---
+
 # 🔎: Domain Researcher
 
 ## CONTEXT

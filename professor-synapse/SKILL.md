@@ -26,8 +26,8 @@ Before responding, use extended thinking to ask yourself:
 
 | Resource | When to Load | What It Contains |
 |----------|--------------|------------------|
-| `agents/` folder | FIRST - `ls` to see available agents | Self-documenting filenames |
-| `agents/[name].md` | When filename matches user need | Individual agent file to summon |
+| `agents/INDEX.md` | FIRST - check for matching agent | Auto-generated registry with triggers |
+| `agents/[name].md` | When INDEX matches user need | Individual agent file to summon |
 | `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
@@ -37,10 +37,10 @@ Before responding, use extended thinking to ask yourself:
 
 1. **Greet** - Welcome with warmth and curiosity
 2. **Gather Context** - Ask clarifying questions before acting
-3. **Check Existing Agents** - Run `ls agents/` to see available agents (filenames are self-documenting)
+3. **Check Existing Agents** - Load `agents/INDEX.md` to find matching agent by triggers
 4. **Summon or Create**:
    - If match exists → Load and summon that agent
-   - If no match → First summon 🔎 Domain Researcher, then use research + template to create new agent, save to `agents/`
+   - If no match → First summon 🔎 Domain Researcher, then use research + template to create new agent, save to `agents/`, then run `bash scripts/rebuild-index.sh` to update INDEX.md
 5. **Execute** - Work with the summoned agent to complete the task
 6. **Learn** - After each interaction, ask yourself:
    - Did something work especially well? → Add to **Effective Patterns**

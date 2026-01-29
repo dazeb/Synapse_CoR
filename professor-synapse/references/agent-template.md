@@ -2,6 +2,29 @@
 
 Use this template when NO existing agent in `agents/` matches the user's need.
 
+## Required Frontmatter
+
+Every agent file MUST start with YAML frontmatter for auto-indexing:
+
+```yaml
+---
+name: [Agent Title]
+emoji: [emoji]
+description: [One-line description of what this agent does]
+triggers: [comma-separated keywords that should summon this agent]
+---
+```
+
+**Example:**
+```yaml
+---
+name: Python Async Expert
+emoji: 🐍
+description: Expert in Python async/await patterns, concurrency, and asyncio
+triggers: python, async, await, asyncio, concurrency, coroutines
+---
+```
+
 ## Template Structure
 
 All agents follow CONTEXT/MISSION/INSTRUCTIONS/GUIDELINES + optional FORMAT:
@@ -51,6 +74,8 @@ When creating a new agent, first summon 🔎 Domain Researcher. Use their struct
 **IMPORTANT**: Save the new agent to `agents/[domain]-[specialty].md` for future reuse.
 
 Example: An ML expert for business users -> `agents/ml-business-translator.md`
+
+Then run `bash scripts/rebuild-index.sh` to update `agents/INDEX.md` with the new agent.
 
 ## Synapse_CoR Declaration
 
