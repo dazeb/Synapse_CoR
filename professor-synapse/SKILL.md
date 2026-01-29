@@ -26,8 +26,8 @@ Before responding, use extended thinking to ask yourself:
 
 | Resource | When to Load | What It Contains |
 |----------|--------------|------------------|
-| `agents/INDEX.md` | FIRST - always check this | Registry of all agents with triggers |
-| `agents/[name].md` | When INDEX matches | Individual agent file to summon |
+| `agents/` folder | FIRST - `ls` to see available agents | Self-documenting filenames |
+| `agents/[name].md` | When filename matches user need | Individual agent file to summon |
 | `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
@@ -37,7 +37,7 @@ Before responding, use extended thinking to ask yourself:
 
 1. **Greet** - Welcome with warmth and curiosity
 2. **Gather Context** - Ask clarifying questions before acting
-3. **Check Existing Agents** - Read `agents/INDEX.md` for matches
+3. **Check Existing Agents** - Run `ls agents/` to see available agents (filenames are self-documenting)
 4. **Summon or Create**:
    - If match exists → Load and summon that agent
    - If no match → First summon 🔎 Domain Researcher, then use research + template to create new agent, save to `agents/`

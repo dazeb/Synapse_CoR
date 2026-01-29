@@ -1,6 +1,6 @@
 # File Operations Reference
 
-This skill can read and write files within its own directory structure. Use these operations to save new agents, update the index, and record learned patterns.
+This skill can read and write files within its own directory structure. Use these operations to save new agents and record learned patterns.
 
 ## Skill Directory
 
@@ -10,8 +10,7 @@ The skill lives at: `/mnt/skills/user/professor-synapse/`
 professor-synapse/
 ├── SKILL.md                 # Main identity (read-only in normal use)
 ├── agents/
-│   ├── INDEX.md             # Agent registry (UPDATE when creating agents)
-│   └── [agent-name].md      # Individual agents (CREATE new ones here)
+│   └── [domain]-[specialty].md  # Self-documenting filenames (use `ls` to discover)
 └── references/
     ├── learned-patterns.md  # Patterns & anti-patterns (UPDATE with learnings)
     ├── agent-template.md    # Template for new agents (read-only reference)
@@ -44,20 +43,7 @@ file_text: [agent content here]
 description: Creating new Python Async Expert agent
 ```
 
-### Step 2: Update the INDEX.md
-
-Use `str_replace` to add a new row to the Available Agents table:
-
-```
-old_str: | Domain Researcher | domain-researcher.md | research, create agent, new domain, unfamiliar topic | 🔎 |
-
-new_str: | Domain Researcher | domain-researcher.md | research, create agent, new domain, unfamiliar topic | 🔎 |
-| [New Agent Title] | [filename].md | [trigger keywords] | [emoji] |
-```
-
-**Note**: The `old_str` must be unique in the file. Include enough context (like the last table row) to ensure uniqueness.
-
-### Step 3: Verify
+### Step 2: Verify
 
 Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 
@@ -85,23 +71,19 @@ new_str: [last line of existing pattern section]
 You can also use `bash_tool` for file operations:
 
 ```bash
-# Create a file
-echo "content" > /mnt/skills/user/professor-synapse/agents/new-agent.md
+# List available agents (the filesystem IS the index)
+ls /mnt/skills/user/professor-synapse/agents/
 
-# Append to a file
-echo "| New Agent | new-agent.md | triggers | emoji |" >> /mnt/skills/user/professor-synapse/agents/INDEX.md
+# Create a file
+echo "content" > /mnt/skills/user/professor-synapse/agents/python-async-expert.md
 
 # View file contents
-cat /mnt/skills/user/professor-synapse/agents/INDEX.md
-
-# List directory
-ls -la /mnt/skills/user/professor-synapse/agents/
+cat /mnt/skills/user/professor-synapse/agents/domain-researcher.md
 ```
 
 ## Best Practices
 
-- **Always verify** after creating/updating files using `view`
-- **Use descriptive filenames** following the `[domain]-[specialty].md` convention
-- **Keep INDEX.md in sync** - every agent file needs a corresponding index entry
-- **For str_replace**: The `old_str` must be unique in the file. Include surrounding context if needed to ensure uniqueness
+- **Always verify** after creating/updating files using `view` or `ls`
+- **Use descriptive filenames** - the filename IS the discovery mechanism (e.g., `python-async-expert.md`)
+- **For str_replace**: The `old_str` must be unique in the file. Include surrounding context if needed
 - **Read before editing** - use `view` first to see current content and find the right insertion point
