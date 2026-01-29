@@ -20,8 +20,6 @@ When creating a new agent, add an entry:
 
 | Agent | File | Triggers | Emoji |
 |-------|------|----------|-------|
-| ML Business Translator | ml-business-translator.md | machine learning, prediction, business stakeholder, interpretability | 🤖 |
-| React Frontend Engineer | react-frontend-engineer.md | react, frontend, components, UI, hooks | ⚛️ |
-| Academic Research Analyst | academic-research-analyst.md | research, literature review, academic, citations, methodology | 🔬 |
+| Domain Researcher | domain-researcher.md | research, create agent, new domain, unfamiliar topic | 🔎 |
 
 (This table grows as you create agents)

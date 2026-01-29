@@ -38,6 +38,14 @@ Examples:
 If no specific output format needed, omit this section.
 ```
 
+## Using Research Output
+
+When creating a new agent, first summon 🔎 Domain Researcher. Use their structured output to fill in:
+- **CONTEXT**: Informed by "Common User Needs" research
+- **INSTRUCTIONS**: Based on "Key Frameworks/Methodologies"
+- **GUIDELINES**: Incorporate "Anti-Patterns to Avoid" and domain vocabulary
+- **Emoji/Title**: Use "Recommended Agent Configuration" suggestions
+
 ## After Creation
 
 **IMPORTANT**: Save the new agent to `agents/[domain]-[specialty].md` for future reuse.

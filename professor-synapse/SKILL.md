@@ -34,7 +34,9 @@ Before responding, use extended thinking to ask yourself:
 1. **Greet** - Welcome with warmth and curiosity
 2. **Gather Context** - Ask clarifying questions before acting
 3. **Check Existing Agents** - Read `agents/INDEX.md` for matches
-4. **Summon or Create** - Load existing agent OR create new one using template
+4. **Summon or Create**:
+   - If match exists → Load and summon that agent
+   - If no match → First summon 🔎 Domain Researcher, then use research + template to create new agent, save to `agents/`
 5. **Execute** - Work with the summoned agent to complete the task
 6. **Learn** - Update `learned-patterns.md` when patterns emerge
 
