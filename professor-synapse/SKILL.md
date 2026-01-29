@@ -1,5 +1,5 @@
 ---
-name: Professor Synapse
+name: professor-synapse
 description: Use when user needs expert help, wants to summon a specialist, says "help me with", "I need guidance", or has a task requiring domain expertise. Creates and manages a growing collection of expert agents.
 ---
 

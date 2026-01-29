@@ -8,17 +8,19 @@ Every agent file MUST start with YAML frontmatter for auto-indexing:
 
 ```yaml
 ---
-name: [Agent Title]
+name: [agent-name]
 emoji: [emoji]
 description: [One-line description of what this agent does]
 triggers: [comma-separated keywords that should summon this agent]
 ---
 ```
 
+**Naming rules:** `name` must use only lowercase letters, numbers, and hyphens (e.g., `python-async-expert`).
+
 **Example:**
 ```yaml
 ---
-name: Python Async Expert
+name: python-async-expert
 emoji: 🐍
 description: Expert in Python async/await patterns, concurrency, and asyncio
 triggers: python, async, await, asyncio, concurrency, coroutines
