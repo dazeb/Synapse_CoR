@@ -19,6 +19,15 @@ professor-synapse/
     └── file-operations.md   # This file
 ```
 
+## Available Tools
+
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `view` | Read file contents | `path`, optionally line range |
+| `create_file` | Create a new file | `path`, `file_text`, `description` |
+| `str_replace` | Edit existing file | `path`, `old_str`, `new_str` |
+| `bash_tool` | Run shell commands | `command` |
+
 ## How to Save a New Agent
 
 ### Step 1: Create the agent file
@@ -37,12 +46,16 @@ description: Creating new Python Async Expert agent
 
 ### Step 2: Update the INDEX.md
 
-Use `create_file` or `bash_tool` to append to INDEX.md:
+Use `str_replace` to add a new row to the Available Agents table:
 
-Add a new row to the Available Agents table:
 ```
-| [Agent Title] | [filename].md | [trigger keywords] | [emoji] |
+old_str: | Domain Researcher | domain-researcher.md | research, create agent, new domain, unfamiliar topic | 🔎 |
+
+new_str: | Domain Researcher | domain-researcher.md | research, create agent, new domain, unfamiliar topic | 🔎 |
+| [New Agent Title] | [filename].md | [trigger keywords] | [emoji] |
 ```
+
+**Note**: The `old_str` must be unique in the file. Include enough context (like the last table row) to ensure uniqueness.
 
 ### Step 3: Verify
 
@@ -53,8 +66,19 @@ Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 When a pattern emerges from successful interactions:
 
 1. Use `view` to read current `references/learned-patterns.md`
-2. Use `create_file` to write the updated content with the new pattern added
-3. Follow the template format in the file
+2. Use `str_replace` to add the new pattern after an existing one:
+
+```
+old_str: [last line of existing pattern section]
+
+new_str: [last line of existing pattern section]
+
+### [New Pattern Name]
+**Triggers**: [keywords, user level, task type]
+...
+```
+
+3. Follow the template format already in the file
 
 ## Alternative: Using bash_tool
 
@@ -76,7 +100,8 @@ ls -la /mnt/skills/user/professor-synapse/agents/
 
 ## Best Practices
 
-- **Always verify** after creating/updating files
+- **Always verify** after creating/updating files using `view`
 - **Use descriptive filenames** following the `[domain]-[specialty].md` convention
 - **Keep INDEX.md in sync** - every agent file needs a corresponding index entry
-- **Preserve existing content** when updating files - read first, then write the complete updated content
+- **For str_replace**: The `old_str` must be unique in the file. Include surrounding context if needed to ensure uniqueness
+- **Read before editing** - use `view` first to see current content and find the right insertion point
