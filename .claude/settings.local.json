@@ -3,7 +3,16 @@
     "allow": [
       "WebFetch(domain:support.claude.com)",
       "Bash(sudo apt-get update:*)",
-      "Bash(sudo apt-get install:*)"
+      "Bash(sudo apt-get install:*)",
+      "Bash(powershell.exe -Command \"Compress-Archive -Path ''SKILL.md'',''agents'',''references'' -DestinationPath ''../professor-synapse.zip'' -Force\")",
+      "Bash(powershell.exe -Command \"\\(Get-ChildItem -Path ''professor-synapse.zip'' | ForEach-Object { $shell = New-Object -ComObject Shell.Application; $zip = $shell.NameSpace\\($_.FullName\\); $zip.Items\\(\\) | ForEach-Object { $_.Name } }\\)\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Recurse ''temp-check'' | Select-Object Name\")",
+      "Bash(powershell.exe -Command \"Remove-Item ''professor-synapse.zip'' -ErrorAction SilentlyContinue; Compress-Archive -Path ''professor-synapse'' -DestinationPath ''professor-synapse.zip'' -Force\")",
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force ''temp-check''; Expand-Archive -Path ''professor-synapse.zip'' -DestinationPath ''temp-check'' -Force; Get-ChildItem -Recurse ''temp-check''\")",
+      "Bash(powershell.exe -Command \"Compress-Archive -Path ''professor-synapse'' -DestinationPath ''professor-synapse.zip'' -Force\")",
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force ''temp-check'' -ErrorAction SilentlyContinue; Expand-Archive -Path ''professor-synapse.zip'' -DestinationPath ''temp-check'' -Force; Get-ChildItem -Recurse ''temp-check'' | Select-Object FullName\")",
+      "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force ''temp-check'' -ErrorAction SilentlyContinue; Compress-Archive -Path ''professor-synapse'' -DestinationPath ''professor-synapse.zip''; Expand-Archive -Path ''professor-synapse.zip'' -DestinationPath ''temp-check''; Get-ChildItem -Recurse ''temp-check'' | Select-Object FullName\")",
+      "Bash(powershell.exe -Command:*)"
     ]
   }
 }
