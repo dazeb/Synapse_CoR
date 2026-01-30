@@ -9,6 +9,77 @@ import sys
 import json
 import re
 
+def convert_frontmatter_table_to_yaml(markdown):
+    """
+    GitHub renders YAML frontmatter as an HTML table.
+    This converts the resulting markdown table back to YAML frontmatter.
+    
+    Detects pattern:
+        key1 | key2 | key3
+        ---|---|---
+        val1 | val2 | val3
+    
+    Converts to:
+        ---
+        key1: val1
+        key2: val2
+        key3: val3
+        ---
+    """
+    lines = markdown.split('\n')
+    
+    # Need at least 3 lines for a frontmatter table
+    if len(lines) < 3:
+        return markdown
+    
+    # Check if first line looks like a header row (word | word | ...)
+    header_line = lines[0].strip()
+    if '|' not in header_line:
+        return markdown
+    
+    # Check if second line is separator (---|---|...)
+    separator_line = lines[1].strip()
+    if not re.match(r'^[\s\-|]+$', separator_line) or '|' not in separator_line:
+        return markdown
+    
+    # Check if third line has values
+    value_line = lines[2].strip()
+    if '|' not in value_line:
+        return markdown
+    
+    # Parse the table
+    headers = [h.strip() for h in header_line.split('|')]
+    values = [v.strip() for v in value_line.split('|')]
+    
+    # Filter out empty strings from split
+    headers = [h for h in headers if h]
+    values = [v for v in values if v]
+    
+    # Must have matching counts and look like frontmatter keys
+    if len(headers) != len(values):
+        return markdown
+    
+    # Common frontmatter keys to validate this is actually frontmatter
+    frontmatter_keys = {'name', 'description', 'title', 'author', 'date', 'tags', 'license', 'version', 'compatibility'}
+    if not any(h.lower() in frontmatter_keys for h in headers):
+        return markdown
+    
+    # Build YAML frontmatter
+    yaml_lines = ['---']
+    for key, value in zip(headers, values):
+        # Handle multi-line or complex values
+        if '\n' in value or ':' in value or value.startswith('['):
+            yaml_lines.append(f'{key}: "{value}"')
+        else:
+            yaml_lines.append(f'{key}: {value}')
+    yaml_lines.append('---')
+    yaml_lines.append('')
+    
+    # Join with rest of document (skip the 3 table lines)
+    rest_of_doc = '\n'.join(lines[3:]).lstrip('\n')
+    
+    return '\n'.join(yaml_lines) + rest_of_doc
+
 def main():
     content = sys.stdin.read()
     
@@ -54,6 +125,9 @@ def main():
         
         # === POST-PROCESSING FOR CLEANER OUTPUT ===
         
+        # Fix YAML frontmatter that was rendered as a table
+        markdown = convert_frontmatter_table_to_yaml(markdown)
+        
         # Fix horizontal rules: '* * *' -> '---'
         markdown = re.sub(r'^\* \* \*$', '---', markdown, flags=re.MULTILINE)
         
@@ -71,7 +145,6 @@ def main():
         markdown = re.sub(r'\*\*([^*]+)\*\*  +', r'**\1** ', markdown)
         
         # Convert indented code blocks to fenced code blocks
-        # html2text outputs code blocks as 4-space indented text
         lines = markdown.split('\n')
         in_code_block = False
         result_lines = []
@@ -84,9 +157,6 @@ def main():
             indent = len(line) - len(stripped)
             
             if not in_code_block:
-                # Not in a code block - check if this starts one
-                # A code block starts with 4+ space indent on non-empty line
-                # Look ahead to see if it's a real code block (multiple lines)
                 if indent >= 4 and stripped:
                     is_code_block = False
                     if i + 1 < len(lines):
@@ -101,20 +171,16 @@ def main():
                         result_lines.append('```')
                         code_buffer.append(line[4:])
                     else:
-                        # Single indented line - not a code block, keep as-is
                         result_lines.append(line)
                 else:
                     result_lines.append(line)
             else:
-                # In a code block - continue until we hit unindented content
                 if indent >= 4 or line.strip() == '':
                     if line.strip() == '':
                         code_buffer.append('')
                     else:
                         code_buffer.append(line[4:])
                 else:
-                    # End of code block
-                    # Remove trailing empty lines from code buffer
                     while code_buffer and code_buffer[-1] == '':
                         code_buffer.pop()
                     result_lines.extend(code_buffer)
@@ -125,7 +191,6 @@ def main():
             
             i += 1
         
-        # Handle file ending in code block
         if in_code_block:
             while code_buffer and code_buffer[-1] == '':
                 code_buffer.pop()
