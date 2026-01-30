@@ -4,7 +4,13 @@
 
 This protocol allows users to pull updates to the Professor Synapse skill **without overwriting their customizations** (custom agents, learned patterns, local modifications).
 
-You are performing a **smart merge**, not a blind overwrite.
+**Critical Understanding:** Skills cannot be edited in place. To update a skill, you must:
+1. Fetch updates from the canonical repo
+2. Merge with user's local customizations
+3. **Rebuild the entire skill** as a new package using skill-creator
+4. User replaces the old skill with the new one via "Copy to your skills" button
+
+You are performing a **smart merge and rebuild**, not a blind overwrite or in-place edit.
 
 ---
 
@@ -130,91 +136,138 @@ bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-s
 diff /mnt/skills/user/professor-synapse/SKILL.md /tmp/canonical-SKILL.md
 ```
 
-### Step 4: Apply Updates Safely
+### Step 4: Prepare Merged Content
 
-**For NEW files:**
+Create a temporary directory with the merged skill content:
+
+1. **Start with canonical structure**
+   - Fetch all system files from canonical repo
+   - Use `bash scripts/fetch-github-file.sh` for each file
+
+2. **Preserve user customizations**
+   - Keep user's custom agents (not in canonical)
+   - Merge learned-patterns.md (user patterns + new system patterns)
+   - Note any user modifications to system files
+
+3. **Smart merge decisions**
+   - **NEW files**: Add from canonical
+   - **MODIFIED system files**: Use canonical version (show user what changed)
+   - **HYBRID files** (learned-patterns): Merge intelligently
+   - **USER files**: Always preserve
+
+**Example merge:**
 ```bash
-bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-synapse/references/new-file.md > /mnt/skills/user/professor-synapse/references/new-file.md
+# Fetch canonical to /tmp/canonical-synapse/
+mkdir -p /tmp/canonical-synapse/{agents,references,scripts}
+
+# Fetch SKILL.md
+bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-synapse/SKILL.md /tmp/canonical-synapse/SKILL.md
+
+# Fetch references/
+bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-synapse/references/convener-protocol.md /tmp/canonical-synapse/references/convener-protocol.md
+# ... repeat for all files
+
+# Copy user's custom agents
+cp /mnt/skills/user/professor-synapse/agents/custom-*.md /tmp/canonical-synapse/agents/
+
+# Merge learned-patterns.md
+# (Extract user's patterns, append to canonical version)
 ```
 
-**For MODIFIED system files:**
-1. Show user what changed (summary, not full diff unless requested)
-2. Recommend applying if changes look beneficial
-3. If user approves, overwrite with canonical version
+### Step 5: Rebuild Skill with skill-creator
 
-**For HYBRID files (learned-patterns.md):**
-1. Fetch canonical version to /tmp
-2. Identify user's custom patterns (content not in canonical)
-3. Merge: canonical structure + user's custom additions
-4. Show user what was merged
-5. Apply the merged version
+**CRITICAL:** You cannot edit skills in place. You must use `skill-creator` to build a new skill package.
 
-**For USER CONTENT (custom agents):**
-- Never overwrite without explicit permission
-- If user created agents that don't exist in canonical, always preserve them
-
-### Step 5: Rebuild Index
-
-After applying updates:
-
-```bash
-cd /mnt/skills/user/professor-synapse && bash scripts/rebuild-index.sh
-```
-
-This regenerates `agents/INDEX.md` with all current agents (system + user's custom ones).
-
-### Step 6: Confirm
-
-Report what was updated and what was preserved:
+Use the skill-creator capability to package the merged content:
 
 ```
-🧙🏾‍♂️: "Updates applied! Changes:
-- Added: references/new-protocol.md
-- Updated: SKILL.md (added new workflow step)
-- Updated: scripts/rebuild-index.sh (bug fix)
+🧙🏾‍♂️: "I've prepared the merged skill content in /tmp/canonical-synapse/ with:
+- All canonical updates
+- Your custom agents preserved
+- Your learned patterns merged
 
-Your customizations preserved:
-- agents/your-custom-agent.md
-- learned-patterns.md (your patterns kept, new system patterns added)
+Now I'll use skill-creator to rebuild the skill..."
 
-Try invoking the skill to confirm everything works."
+[Use skill-creator tool to create skill from /tmp/canonical-synapse/]
 ```
+
+The skill-creator will:
+1. Package the directory as a skill zip
+2. Validate the structure
+3. Make it available for installation
+
+### Step 6: User Replaces Skill
+
+Once skill-creator finishes, instruct the user:
+
+```
+🧙🏾‍♂️: "✅ Updated skill built successfully!
+
+To replace your current Professor Synapse skill:
+
+1. You should see a skill preview/confirmation
+2. Click the 'Copy to your skills' button
+3. This will REPLACE your existing Professor Synapse skill
+4. Your customizations are preserved in the new version
+
+What was updated:
+- [List changes from canonical]
+
+What was preserved:
+- [List user's custom agents/patterns]
+
+Ready to replace your skill?"
+```
+
+**Important:** The user clicks the button—you cannot do this programmatically.
 
 ---
+
+## When to Use This Protocol
+
+This protocol is needed whenever the skill structure changes:
+
+**Updating from canonical repo:**
+- User says "check for updates" or "update the skill"
+- SKILL.md shows skill is over a month old
+- User wants new features from canonical repo
+
+**Adding new content:**
+- User creates a new agent
+- User adds a new script or reference file
+- Any change to the skill structure
+
+**Why rebuild is needed:**
+- Skills cannot be edited in place
+- All changes require rebuilding via skill-creator
+- User then replaces old skill with new via UI button
 
 ## Safety Principles
 
 ### Never Blind Overwrite
-- Always show what's changing before applying
+- Always show what's changing before rebuilding
 - Always preserve user's custom content
-- Always ask before deleting anything
+- Always ask before removing anything
 
 ### Smart Merge Strategy
-1. **New features** - Add them (low risk)
-2. **Modified system files** - Show diff, recommend update
+1. **New features** - Add from canonical (low risk)
+2. **Modified system files** - Use canonical, show user what changed
 3. **Hybrid files** - Merge intelligently (preserve user's additions)
-4. **User files** - Never touch (except system agents with permission)
+4. **User files** - Always preserve (custom agents, custom patterns)
 
-### Conflict Resolution
+### The Rebuild Workflow
+1. **Prepare** merged content in /tmp directory
+2. **Validate** merge preserved customizations
+3. **Use skill-creator** to rebuild skill package
+4. **User replaces** via "Copy to your skills" button
 
-If a file has BOTH system changes AND user customizations:
-
-**Option 1: Side-by-side (safest)**
-- Save canonical version as `[file].canonical`
-- Keep user's version as `[file]`
-- Show user the differences
-- Let user manually merge if they want
-
-**Option 2: Smart merge (if possible)**
-- Identify non-overlapping changes
-- Merge both sets of changes
-- Show user what was merged
-
-**When in doubt:** Option 1 (side-by-side). Better to be safe.
+**Critical:** You prepare and build, user clicks the button to replace.
 
 ---
 
 ## Quick Reference
+
+### Fetching from GitHub
 
 ```bash
 # List repo structure
@@ -223,12 +276,31 @@ curl -sL "https://github.com/USER/REPO/tree/BRANCH/PATH" | grep -o 'PATH/[^"]*' 
 # Fetch file content (to stdout)
 bash scripts/fetch-github-file.sh USER/REPO BRANCH path/to/file.md
 
-# Fetch file content (to specific file)
+# Fetch file content (to file)
 bash scripts/fetch-github-file.sh USER/REPO BRANCH path/to/file.md /output/path.md
-
-# Rebuild agent index after changes
-bash scripts/rebuild-index.sh
 ```
+
+### Complete Update Workflow
+
+```
+1. Fetch canonical files to /tmp/canonical-synapse/
+2. Copy user's custom agents to /tmp/canonical-synapse/agents/
+3. Merge learned-patterns.md (user + canonical)
+4. cd /tmp/canonical-synapse && bash scripts/rebuild-index.sh
+5. Use skill-creator on /tmp/canonical-synapse/
+6. Instruct user to click "Copy to your skills" to replace
+```
+
+### Adding New Agent/Script (Also Requires Rebuild)
+
+```
+1. Create/modify files in current skill location
+2. cd /mnt/skills/user/professor-synapse && bash scripts/rebuild-index.sh
+3. Use skill-creator on /mnt/skills/user/professor-synapse/
+4. Instruct user to click "Copy to your skills" to replace
+```
+
+**Key Principle:** Any structural change = rebuild with skill-creator + user replaces via button.
 
 **Blocked domains (do not attempt):**
 - `api.github.com`
