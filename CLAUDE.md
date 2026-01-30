@@ -50,6 +50,22 @@ The global PACT Orchestrator is loaded from `~/.claude/CLAUDE.md`.
 
 **Never manually zip the folder** - the script handles exclusions and index rebuilding correctly.
 
+### Committing Changes
+
+**CRITICAL:** Always commit BOTH the zip and index when packaging:
+
+```bash
+# After making changes and repackaging:
+git add professor-synapse/ professor-synapse.zip
+git commit -m "your message"
+git push origin main
+```
+
+**Files to always include:**
+- `professor-synapse.zip` - The packaged skill
+- `professor-synapse/agents/INDEX.md` - Updated agent registry
+- Any other modified files in `professor-synapse/`
+
 ---
 
 ## Retrieved Context
