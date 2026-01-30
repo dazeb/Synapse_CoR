@@ -36,6 +36,20 @@ The global PACT Orchestrator is loaded from `~/.claude/CLAUDE.md`.
 
 **Detailed "how-to" instructions belong in `references/`, not in SKILL.md.**
 
+### Packaging the Skill
+
+**IMPORTANT:** Always use the packaging script to create the distribution zip.
+
+**Command:** `bash scripts/package-skill.sh`
+
+**What it does:**
+1. Rebuilds the agent index (`agents/INDEX.md`)
+2. Removes old `professor-synapse.zip`
+3. Creates new `professor-synapse.zip` with proper exclusions
+4. Outputs to project root
+
+**Never manually zip the folder** - the script handles exclusions and index rebuilding correctly.
+
 ---
 
 ## Retrieved Context
