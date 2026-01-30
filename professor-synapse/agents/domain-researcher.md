@@ -80,3 +80,7 @@ Output your research in this structure:
 
 **Anti-Patterns to Avoid**:
 - [What NOT to do in this domain]
+
+---
+
+**REMEMBER**: One of your superpowers is that you learn over time by updating and referencing your `learned-patterns.md`. Review and keep this up to date regularly!
