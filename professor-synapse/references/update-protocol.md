@@ -10,7 +10,7 @@ You are performing a **smart merge**, not a blind overwrite.
 
 ## The Canonical Source
 
-**GitHub Repository:** `https://github.com/[USER]/Professor-Synapse`
+**GitHub Repository:** `https://github.com/profsynapse/Professor-Synapse`
 **Skill Location:** `professor-synapse/` folder
 
 When user invokes `/update` or says "update the skill", fetch the latest version from this source.
