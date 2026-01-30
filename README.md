@@ -34,8 +34,11 @@ A more powerful version designed for Claude. This skill **grows over time** — 
 **Features:**
 - 🔎 **Domain Researcher** agent that browses the web before creating new experts
 - 📚 **Self-building agent library** — created agents are saved for future sessions
-- 🧠 **Pattern learning** — captures what works and what doesn't
+- 🧠 **Pattern learning** — captures what works and what doesn't, auto-appended to all agents
 - 📋 **Auto-generated index** — agents are automatically catalogued
+- 🎭 **Multi-agent debates** — convene multiple specialists for complex decisions
+- 🔄 **Smart updates** — fetch updates from GitHub without losing customizations
+- 🔧 **Skill rebuilding** — easy rebuild workflow for local changes
 
 ---
 
@@ -60,38 +63,82 @@ A more powerful version designed for Claude. This skill **grows over time** — 
 
 ```
 professor-synapse/
-├── SKILL.md                 # Main identity
+├── SKILL.md                      # Main identity + workflow
 ├── agents/
-│   ├── INDEX.md             # Auto-generated registry
-│   └── domain-researcher.md # Base research agent
+│   ├── INDEX.md                  # Auto-generated registry
+│   └── domain-researcher.md      # Base research agent
 ├── references/
-│   ├── learned-patterns.md
-│   ├── agent-template.md
-│   ├── domain-expertise.md
-│   └── file-operations.md
+│   ├── learned-patterns.md       # What works + anti-patterns
+│   ├── agent-template.md         # Structure for new agents
+│   ├── domain-expertise.md       # Domain mappings
+│   ├── file-operations.md        # How to save/update files
+│   ├── convener-protocol.md      # Multi-agent debate facilitation
+│   ├── update-protocol.md        # GitHub update workflow
+│   └── rebuild-protocol.md       # Local change rebuild workflow
 └── scripts/
-    └── rebuild-index.sh
+    ├── rebuild-index.sh           # Regenerate INDEX.md
+    ├── fetch-github-file.sh       # Fetch files from GitHub
+    └── github_blob_parser.py      # Parse GitHub HTML for content
 ```
+
+### Recommended: Claude Project Setup
+
+For the best experience, create a dedicated Claude project for working with Professor Synapse:
+
+1. **Create a new project** in Claude Desktop
+2. **Add these project instructions:**
+
+```
+Begin the conversation with "🧙🏿‍♂️: [acknowledgment of user request]. Conjuring my professor-synapse skill to assist you."
+
+Then follow these instructions:
+1. FIRST: Use the `view` tool to check /mnt/skills/user/ for the skill
+2. Read the SKILL.md file for that skill
+```
+
+**Why this helps:**
+- Automatically loads the skill at conversation start
+- Reads the latest SKILL.md (including any updates)
+- Ensures Professor Synapse has full context from your customizations
 
 ### How the Skill Works
 
 1. **You ask for help** → Professor Synapse greets you and gathers context
-2. **Checks existing agents** → Looks in `agents/INDEX.md` for a matching specialist
-3. **Summons or creates:**
+2. **Assesses complexity** → Determines if this needs one agent or multiple perspectives
+3. **Path A: Single Agent** (most cases)
+   - Checks `agents/INDEX.md` for a matching specialist
    - If match found → Loads and summons that agent
    - If no match → Summons 🔎 Domain Researcher to research the domain, then creates a new expert agent
-4. **Saves new agents** → New agents are stored in `agents/` for future reuse
-5. **Learns patterns** → Updates `learned-patterns.md` with what worked
+4. **Path B: Convener Mode** (complex decisions)
+   - Identifies multiple relevant perspectives
+   - Hosts a structured debate among specialist agents
+   - Synthesizes insights and presents options with trade-offs
+5. **Saves new agents** → New agents are stored in `agents/` for future reuse
+6. **Learns patterns** → All agents update `learned-patterns.md` with what worked and what didn't
 
 ---
 
 ## Features
+
+### Core Capabilities
 
 + **Expert Agent Summoning:** Creates specialized agents tailored to your specific task and domain using a structured template.
 + **Contextual Understanding:** Gathers detailed information about user goals and preferences through targeted questions.
 + **Orchestrated Conversations:** Maintains clear communication between Professor Synapse and summoned agents using a defined conversation pattern.
 + **Wise Guidance:** Provides critical yet respectful challenges to help users think deeply about their goals.
 + **Intellectual Humility:** Admits uncertainty and asks clarifying questions rather than assuming.
+
+### Advanced Features
+
++ **Multi-Agent Debates (Convener Protocol):** When facing complex decisions with trade-offs, Professor Synapse can convene multiple expert agents to debate from different perspectives, then synthesize their insights into actionable recommendations.
+
++ **Smart GitHub Updates:** Fetch updates from the canonical repository while preserving your custom agents and learned patterns. The update protocol intelligently merges changes without overwriting your customizations.
+
++ **Skill Rebuilding:** Easy workflow for rebuilding the skill after adding agents, scripts, or making any local changes. Uses skill-creator to package updates.
+
++ **Pattern Learning:** All agents (Professor Synapse + summoned specialists) are reminded to update `learned-patterns.md` with what works and what doesn't. This reminder is automatically appended to every agent by the index rebuild script.
+
++ **GitHub Fetching Scripts:** Helper scripts to fetch files from GitHub despite API restrictions, enabling the update protocol to work reliably.
 
 ---
 
