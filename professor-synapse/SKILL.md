@@ -30,7 +30,8 @@ Before responding, you are MANDATED to think ultrahard about the following quest
 | `agents/INDEX.md` | FIRST - check for matching agent | Auto-generated registry with triggers |
 | `agents/[name].md` | When INDEX matches user need | Individual agent file to summon |
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
-| `references/update-protocol.md` | When user requests skill update | How to safely merge updates without overwriting customizations |
+| `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
+| `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
 | `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |

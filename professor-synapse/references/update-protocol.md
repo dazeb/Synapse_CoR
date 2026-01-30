@@ -196,27 +196,26 @@ The skill-creator will:
 2. Validate the structure
 3. Make it available for installation
 
-### Step 6: User Replaces Skill
+### Step 6: Rebuild the Skill
 
-Once skill-creator finishes, instruct the user:
+**See `rebuild-protocol.md` for the complete rebuild workflow.**
+
+Summary:
+1. Validate merged content in /tmp/canonical-synapse/
+2. Run `bash scripts/rebuild-index.sh` in the merged directory
+3. Use skill-creator on the merged directory
+4. User clicks "Copy to your skills" to replace
 
 ```
-🧙🏾‍♂️: "✅ Updated skill built successfully!
+🧙🏾‍♂️: "✅ Merged skill content prepared!
 
-To replace your current Professor Synapse skill:
+Following the rebuild protocol to package the updated skill..."
 
-1. You should see a skill preview/confirmation
-2. Click the 'Copy to your skills' button
-3. This will REPLACE your existing Professor Synapse skill
-4. Your customizations are preserved in the new version
+[Follow rebuild-protocol.md steps]
 
-What was updated:
-- [List changes from canonical]
-
-What was preserved:
-- [List user's custom agents/patterns]
-
-Ready to replace your skill?"
+"Ready to replace your skill with this updated version that includes:
+- [List canonical updates]
+- [List preserved customizations]"
 ```
 
 **Important:** The user clicks the button—you cannot do this programmatically.
