@@ -13,7 +13,7 @@ You are performing a **smart merge**, not a blind overwrite.
 **GitHub Repository:** `https://github.com/profsynapse/Professor-Synapse`
 **Skill Location:** `professor-synapse/` folder
 
-When user invokes `/update` or says "update the skill", fetch the latest version from this source.
+When user says "check for updates" or "update the skill", fetch the latest version from this source.
 
 ---
 
@@ -264,15 +264,14 @@ If the repo reorganizes structure:
 
 ---
 
-## Triggering Updates
+## When to Check for Updates
 
-User can trigger with:
-- `/update` command
+Updates are **user-initiated only**. User can say:
+- "Check for updates"
 - "Update the Professor Synapse skill"
-- "Check for skill updates"
-- "Pull latest Professor Synapse version"
+- "Pull latest version"
 
-**Frequency:** Updates should be user-initiated, not automatic. Respect user's version control.
+**Note:** SKILL.md shows last updated date. If over a month old, you may proactively suggest checking for updates when user first invokes the skill.
 
 ---
 
