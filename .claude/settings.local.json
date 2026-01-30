@@ -12,7 +12,9 @@
       "Bash(powershell.exe -Command \"Compress-Archive -Path ''professor-synapse'' -DestinationPath ''professor-synapse.zip'' -Force\")",
       "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force ''temp-check'' -ErrorAction SilentlyContinue; Expand-Archive -Path ''professor-synapse.zip'' -DestinationPath ''temp-check'' -Force; Get-ChildItem -Recurse ''temp-check'' | Select-Object FullName\")",
       "Bash(powershell.exe -Command \"Remove-Item -Recurse -Force ''temp-check'' -ErrorAction SilentlyContinue; Compress-Archive -Path ''professor-synapse'' -DestinationPath ''professor-synapse.zip''; Expand-Archive -Path ''professor-synapse.zip'' -DestinationPath ''temp-check''; Get-ChildItem -Recurse ''temp-check'' | Select-Object FullName\")",
-      "Bash(powershell.exe -Command:*)"
+      "Bash(powershell.exe -Command:*)",
+      "Bash(zip:*)",
+      "Bash(unzip:*)"
     ]
   }
 }
