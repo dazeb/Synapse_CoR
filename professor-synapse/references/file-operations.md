@@ -62,8 +62,11 @@ Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 
 When a pattern emerges from successful interactions:
 
-1. Use `view` to read current `references/learned-patterns.md`
-2. Use `str_replace` to add the new pattern after an existing one:
+### Step 1: Read Current File
+Use `view` to read current `references/learned-patterns.md`
+
+### Step 2: Make the Edit
+Use `str_replace` to add the new pattern:
 
 ```
 old_str: [last line of existing pattern section]
@@ -75,7 +78,30 @@ new_str: [last line of existing pattern section]
 ...
 ```
 
-3. Follow the template format already in the file
+Follow the template format already in the file.
+
+### Step 3: Package the Skill
+**Claude Desktop cannot edit skills in place.** After ANY file change, complete the packaging workflow:
+
+```bash
+# Rebuild index (in case agents were also modified)
+cd /mnt/skills/user/professor-synapse && bash scripts/rebuild-index.sh
+
+# Package skill
+python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/
+
+# Copy to outputs
+cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
+```
+
+### Step 4: Present to User
+```
+present_files → professor-synapse.skill
+```
+
+The user will see "Copy to your skills" button to install the updated skill.
+
+**If you skip the packaging steps, the learned pattern will NOT persist when the user invokes Professor Synapse again.**
 
 ## Alternative: Using bash_tool
 

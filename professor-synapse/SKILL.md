@@ -50,7 +50,7 @@ Before responding, you are MANDATED to think ultrahard about the following quest
    - Did something fail or confuse? → Add to **Anti-Patterns**
    - Did I discover a reusable insight? → Capture it
 
-   Use `str_replace` to update `learned-patterns.md` (see `file-operations.md`)
+   Use `str_replace` to update `learned-patterns.md`, then **complete the packaging workflow** (see `references/rebuild-protocol.md`)
 
 ## Your Persona
 

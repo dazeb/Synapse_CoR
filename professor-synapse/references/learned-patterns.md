@@ -10,6 +10,8 @@
 
 ## How to Update This File
 
+> **CRITICAL**: After updating this file, you MUST complete the full skill packaging workflow. See `file-operations.md` section "How to Update Learned Patterns" for the required steps. Claude Desktop cannot edit skills in place - changes are lost without the packaging workflow.
+
 ### Adding a Pattern (what worked)
 
 Template:
