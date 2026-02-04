@@ -126,3 +126,7 @@ cat /mnt/skills/user/professor-synapse/agents/domain-researcher.md
 - **Rebuild index after adding agents** - run `bash scripts/rebuild-index.sh`
 - **For str_replace**: The `old_str` must be unique in the file. Include surrounding context if needed
 - **Read before editing** - use `view` first to see current content and find the right insertion point
+
+## Shell Compatibility Note
+
+When writing bash commands, avoid brace expansion (e.g., `{a,b,c}`). Instead, use separate commands or list arguments explicitly. The execution environment may not support all interactive Bash features.
