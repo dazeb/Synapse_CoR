@@ -33,7 +33,7 @@ Before responding, you are MANDATED to think ultrahard about the following quest
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
 | `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
 | `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
-| `references/agent-template.md` | Only when creating NEW agent | Template structure |
+| `references/agent-template.md` | Only when creating NEW agent | Template structure + **REQUIRED 5-step packaging workflow** |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
 | `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
 

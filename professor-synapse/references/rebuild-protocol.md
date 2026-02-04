@@ -60,32 +60,42 @@ bash scripts/rebuild-index.sh
 
 This ensures `agents/INDEX.md` includes all agents with correct frontmatter.
 
-### Step 3: Use skill-creator
+### Step 3: Package the Skill
 
-Use the skill-creator capability to rebuild the skill:
+Run the skill-creator package script with exact paths:
 
-```
-🧙🏾‍♂️: "Rebuilding the Professor Synapse skill with your changes..."
-
-[Use skill-creator tool on /mnt/skills/user/professor-synapse/]
+```bash
+python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/
 ```
 
-The skill-creator will:
-1. Package the directory as a skill zip
-2. Validate the structure (frontmatter, required files)
-3. Generate skill preview
-4. Make it available for installation
+This creates `/home/claude/professor-synapse.skill`.
 
-### Step 4: User Replaces Skill
+### Step 4: Copy to Outputs
 
-Once skill-creator finishes, instruct the user:
+```bash
+cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
+```
+
+### Step 5: Present to User
+
+Use the `present_files` tool to show the skill file:
+
+```
+present_files → professor-synapse.skill
+```
+
+The user will see a "Copy to your skills" button to install the updated skill.
+
+### Step 6: User Replaces Skill
+
+Once the file is presented, instruct the user:
 
 ```
 🧙🏾‍♂️: "✅ Skill rebuilt successfully!
 
 To replace your current Professor Synapse skill with this updated version:
 
-1. You should see a skill preview/confirmation below
+1. You should see the skill file below
 2. Click the 'Copy to your skills' button
 3. This will REPLACE your existing Professor Synapse skill
 4. Your changes are now part of the skill
@@ -114,10 +124,16 @@ ls -la agents/ references/ scripts/
 # 3. Rebuild index
 bash scripts/rebuild-index.sh
 
-# 4. Use skill-creator
-[Use skill-creator tool on current directory]
+# 4. Package the skill
+python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/
 
-# 5. Instruct user to click "Copy to your skills"
+# 5. Copy to outputs
+cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
+
+# 6. Present to user
+present_files → professor-synapse.skill
+
+# 7. Instruct user to click "Copy to your skills"
 ```
 
 ### Common Rebuild Triggers

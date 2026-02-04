@@ -71,13 +71,40 @@ When creating a new agent, first summon 🔎 Domain Researcher. Use their struct
 - **GUIDELINES**: Incorporate "Anti-Patterns to Avoid" and domain vocabulary
 - **Emoji/Title**: Use "Recommended Agent Configuration" suggestions
 
-## After Creation
+## After Creation - CRITICAL
 
-**IMPORTANT**: Save the new agent to `agents/[domain]-[specialty].md` for future reuse.
+**Claude Desktop cannot edit skills in place.** After creating a new agent, you MUST complete ALL of these steps to make it available:
+
+### Step 1: Save the Agent
+```
+create_file → /mnt/skills/user/professor-synapse/agents/[domain]-[specialty].md
+```
 
 Example: An ML expert for business users -> `agents/ml-business-translator.md`
 
-Then run `bash scripts/rebuild-index.sh` to update `agents/INDEX.md` with the new agent.
+### Step 2: Rebuild the Index
+```bash
+cd /mnt/skills/user/professor-synapse && bash scripts/rebuild-index.sh
+```
+
+### Step 3: Package the Skill
+```bash
+python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/
+```
+
+### Step 4: Copy to Outputs
+```bash
+cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
+```
+
+### Step 5: Present to User
+```
+present_files → professor-synapse.skill
+```
+
+The user will then see "Copy to your skills" button to install the updated skill.
+
+**If you skip any step, the new agent will NOT be available when the user invokes Professor Synapse.**
 
 ## Synapse_CoR Declaration
 

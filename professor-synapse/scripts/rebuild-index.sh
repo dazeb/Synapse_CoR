@@ -61,3 +61,11 @@ ENTRY_COUNT=$(($(grep -c '^|' "$INDEX_FILE") - 1))
 
 echo "✅ INDEX.md rebuilt with $ENTRY_COUNT agent(s)"
 echo "✅ Learned-patterns reminder appended to all agents (if not already present)"
+
+echo ""
+echo "📋 NEXT STEPS to complete skill update:"
+echo "  1. Package skill:  python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/"
+echo "  2. Copy to outputs: cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/"
+echo "  3. Present file:    present_files → professor-synapse.skill"
+echo ""
+echo "⚠️  The user must click 'Copy to your skills' to complete the update!"
