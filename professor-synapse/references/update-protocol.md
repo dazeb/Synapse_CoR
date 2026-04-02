@@ -36,7 +36,7 @@ Claude's network blocks these domains:
 GitHub embeds file content as JSON within the blob page HTML. We can:
 1. Fetch the blob page via `curl` (github.com is allowed)
 2. Parse the embedded JSON from `<script type="application/json" data-target="react-app.embeddedData">`
-3. Extract the `richText` field (rendered HTML) or `rawLines` (for non-markdown)
+3. Extract `payload.codeViewBlobRoute.richText` (rendered HTML) or `payload['codeViewBlobLayoutRoute.StyledBlob'].rawLines` (for non-markdown), with fallback to legacy `payload.blob` paths
 4. Convert HTML to Markdown using `html2text`
 5. Post-process for clean formatting (fix code blocks, horizontal rules, etc.)
 

@@ -6,6 +6,7 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ## 2026-04-02
 
+- **GitHub blob parser fix**: Updated `github_blob_parser.py` to handle GitHub's reorganized JSON payload structure (`payload.codeViewBlobRoute.richText` and `payload['codeViewBlobLayoutRoute.StyledBlob'].rawLines`), with fallback to legacy paths
 - **Packaging workflow enforcement**: Added mandatory packaging workflow section to SKILL.md — impossible to miss
 - **Two-tier learned patterns**: Global patterns now live directly in SKILL.md; domain-specific patterns live in each agent's own Learned Patterns section
 - **Agent template updated**: Learned Patterns section (Effective Patterns / Anti-Patterns) added to agent template with format templates
