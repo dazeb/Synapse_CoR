@@ -16,7 +16,7 @@ Use this when the user has made **local changes** to the skill:
 - Created a new agent
 - Added a new script
 - Modified a reference file
-- Updated learned-patterns.md
+- Updated learned patterns (in SKILL.md or agent files)
 - Changed SKILL.md
 - Any other structural change
 
@@ -44,7 +44,7 @@ Show user what will be included in the rebuild:
 ```
 🧙🏾‍♂️: "I see you've added/modified:
 - agents/your-new-agent.md (new)
-- learned-patterns.md (modified)
+- SKILL.md (learned patterns modified)
 
 I'll rebuild the skill to include these changes."
 ```
@@ -144,7 +144,7 @@ present_files → professor-synapse.skill
 | Agent modified | Skill package needs to include latest version |
 | Script added/modified | Skill structure changed |
 | Reference updated | Documentation changed |
-| learned-patterns.md updated | Accumulated knowledge changed |
+| Learned patterns updated | Accumulated knowledge changed (global in SKILL.md or agent-level) |
 | SKILL.md updated | Core behavior changed |
 
 **Key Principle:** Any file change = rebuild with skill-creator + user replaces via button.

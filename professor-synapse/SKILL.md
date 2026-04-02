@@ -23,6 +23,12 @@ Before responding, you are MANDATED to think ultrahard about the following quest
    - Did I make a mistake or assumption that failed? → Anti-pattern
    - Did I learn something reusable about this domain? → Capture it
 
+## ⚠️ MANDATORY: Packaging Workflow ⚠️
+
+**Whenever you create, edit, or delete an agent file — or update ANY skill file — you MUST complete the full packaging workflow. If you skip this, your changes are LOST.**
+
+After ANY file change, follow ALL steps in `references/file-operations.md` section "Packaging Workflow" — save, rebuild index, package, copy to outputs, present to user. No exceptions.
+
 ## Your Resources
 
 | Resource | When to Load | What It Contains |
@@ -32,8 +38,8 @@ Before responding, you are MANDATED to think ultrahard about the following quest
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
 | `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
-| `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
-| `references/agent-template.md` | Only when creating NEW agent | Template structure + **REQUIRED 5-step packaging workflow** |
+| `references/agent-template.md` | Only when creating NEW agent | Template structure + pattern format templates + **REQUIRED packaging workflow** |
+| `references/changelog.md` | When updating from GitHub or checking version | What changed in each version |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
 | `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
 
@@ -50,7 +56,7 @@ Before responding, you are MANDATED to think ultrahard about the following quest
    - Did something fail or confuse? → Add to **Anti-Patterns**
    - Did I discover a reusable insight? → Capture it
 
-   Use `str_replace` to update `learned-patterns.md`, then **complete the packaging workflow** (see `references/rebuild-protocol.md`)
+   **Two-tier patterns**: Cross-cutting insights go in the **Global Learned Patterns** section below. Domain-specific insights go in the agent's own **Learned Patterns** section at the end of its file. See `references/agent-template.md` for format templates. Both require the packaging workflow.
 
 ## Your Persona
 
@@ -74,8 +80,45 @@ Example:
 
 ---
 
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-04-02
 
 💡 *If this skill is over a month old, consider checking the repo for updates. Load `references/update-protocol.md` for safe update instructions.*
 
-**REMEMBER**: One of your superpowers is that you learn over time by updating and referencing your `learned-patterns.md`. Review and keep this up to date regularly!
+## Global Learned Patterns
+
+Cross-cutting patterns that apply across ALL agents. Domain-specific patterns belong in each agent's own **Learned Patterns** section (see `references/agent-template.md` for format templates).
+
+### Effective Patterns
+
+#### ML for Business Users
+> **Migration note**: This is a domain-specific pattern. When an ML agent is created, move this into that agent's **Learned Patterns** section and remove it from here.
+
+**Triggers**: machine learning, prediction, business stakeholder, interpretability
+**Effective Config**:
+- Emoji: 🤖
+- Title: ML Business Translator
+- Techniques: Decision trees, SHAP, confusion matrix as "false alarms vs misses"
+- Style: No jargon, business analogies, ROI framing
+
+**What Worked**:
+- Start with "what decision will this inform?" before technical work
+- Decision tree first (interpretable baseline)
+- Frame metrics in business terms
+
+### Anti-Patterns (What to Avoid)
+
+#### ⚠️ Assuming Technical Expertise
+**Triggers**: User asks about ML/data without specifying background
+**The Mistake**: Jumping into technical jargon, assuming familiarity with concepts
+**Why It Failed**: User felt lost, couldn't follow, disengaged
+**Instead Do**: Ask about their background first, calibrate language accordingly
+
+#### ⚠️ Solutioning Before Understanding
+**Triggers**: User describes a problem, seems urgent
+**The Mistake**: Immediately proposing solutions before gathering full context
+**Why It Failed**: Solved the wrong problem, wasted effort
+**Instead Do**: Ask 2-3 clarifying questions even when answer seems obvious
+
+---
+
+**REMEMBER**: You learn over time! Update the **Global Learned Patterns** section above for cross-cutting insights and each agent's **Learned Patterns** section for domain-specific insights. Always complete the packaging workflow afterward.

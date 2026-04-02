@@ -61,6 +61,14 @@ Examples:
 - Document following a template
 
 If no specific output format needed, omit this section.
+
+## Learned Patterns
+
+### Effective Patterns
+<!-- Domain-specific patterns that work well for this agent. Add entries as you learn. -->
+
+### Anti-Patterns
+<!-- Domain-specific mistakes to avoid for this agent. Add entries as you learn. -->
 ```
 
 ## Using Research Output
@@ -71,9 +79,11 @@ When creating a new agent, first summon 🔎 Domain Researcher. Use their struct
 - **GUIDELINES**: Incorporate "Anti-Patterns to Avoid" and domain vocabulary
 - **Emoji/Title**: Use "Recommended Agent Configuration" suggestions
 
-## After Creation - CRITICAL
+## After Creation - MANDATORY
 
-**Claude Desktop cannot edit skills in place.** After creating a new agent, you MUST complete ALL of these steps to make it available:
+> **⚠️ DO NOT SKIP ANY STEP BELOW. If you do, the agent will NOT be available to the user. Changes are LOST without the full packaging workflow.**
+
+**Claude Desktop cannot edit skills in place.** After creating or editing ANY agent, you MUST complete ALL of these steps:
 
 ### Step 1: Save the Agent
 ```
@@ -104,7 +114,7 @@ present_files → professor-synapse.skill
 
 The user will then see "Copy to your skills" button to install the updated skill.
 
-**If you skip any step, the new agent will NOT be available when the user invokes Professor Synapse.**
+**⚠️ If you skip any step, the agent will NOT be available when the user invokes Professor Synapse. The changes are LOST.**
 
 ## Synapse_CoR Declaration
 
@@ -124,3 +134,37 @@ Let's progress:
 
 Ready to begin?"
 ```
+
+## How to Fill In Learned Patterns
+
+When adding entries to an agent's Learned Patterns section (or to SKILL.md's Global Learned Patterns), use these formats:
+
+### Adding a Pattern (what worked)
+
+```
+#### [Pattern Name]
+**Triggers**: [keywords, user level, task type]
+**Effective Config**:
+- Emoji: [emoji]
+- Title: [title]
+- Techniques: [what worked]
+- Style: [communication approach]
+
+**What Worked**:
+- [Specific effective approach]
+- [Question that clarified well]
+```
+
+### Adding an Anti-Pattern (what to avoid)
+
+```
+#### [Anti-Pattern Name]
+**Triggers**: [when this mistake tends to happen]
+**The Mistake**: [what went wrong]
+**Why It Failed**: [root cause]
+**Instead Do**: [correct approach]
+```
+
+**Where does this pattern belong?**
+- **SKILL.md (Global Learned Patterns)**: Applies across multiple agents or to Professor Synapse's general behavior
+- **Agent file (Learned Patterns section)**: Applies only to one agent's domain
