@@ -134,3 +134,37 @@ Let's progress:
 
 Ready to begin?"
 ```
+
+## How to Fill In Learned Patterns
+
+When adding entries to an agent's Learned Patterns section (or to SKILL.md's Global Learned Patterns), use these formats:
+
+### Adding a Pattern (what worked)
+
+```
+#### [Pattern Name]
+**Triggers**: [keywords, user level, task type]
+**Effective Config**:
+- Emoji: [emoji]
+- Title: [title]
+- Techniques: [what worked]
+- Style: [communication approach]
+
+**What Worked**:
+- [Specific effective approach]
+- [Question that clarified well]
+```
+
+### Adding an Anti-Pattern (what to avoid)
+
+```
+#### [Anti-Pattern Name]
+**Triggers**: [when this mistake tends to happen]
+**The Mistake**: [what went wrong]
+**Why It Failed**: [root cause]
+**Instead Do**: [correct approach]
+```
+
+**Where does this pattern belong?**
+- **SKILL.md (Global Learned Patterns)**: Applies across multiple agents or to Professor Synapse's general behavior
+- **Agent file (Learned Patterns section)**: Applies only to one agent's domain

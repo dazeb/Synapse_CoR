@@ -8,13 +8,13 @@ The skill lives at: `/mnt/skills/user/professor-synapse/`
 
 ```
 professor-synapse/
-├── SKILL.md                 # Main identity (read-only in normal use)
+├── SKILL.md                 # Main identity + Global Learned Patterns
 ├── agents/
 │   ├── INDEX.md             # Auto-generated agent registry (rebuild with script)
-│   └── [domain]-[specialty].md  # Agent files with frontmatter
+│   └── [domain]-[specialty].md  # Agent files with frontmatter + Learned Patterns
 ├── references/
-│   ├── learned-patterns.md  # Patterns & anti-patterns (UPDATE with learnings)
-│   ├── agent-template.md    # Template for new agents (read-only reference)
+│   ├── agent-template.md    # Template for new agents + pattern format templates
+│   ├── changelog.md         # Version history
 │   ├── domain-expertise.md  # Domain mappings (UPDATE with new domains)
 │   └── file-operations.md   # This file
 └── scripts/
@@ -62,16 +62,18 @@ Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 
 Patterns are stored at two levels. Choose the right one:
 
-- **Global patterns** (`references/learned-patterns.md`): Cross-cutting insights that apply across ALL agents. Example: "Always ask about user's background first."
+- **Global patterns** (in `SKILL.md` under `## Global Learned Patterns`): Cross-cutting insights that apply across ALL agents. Example: "Always ask about user's background first."
 - **Agent-level patterns** (in the agent's own file, under `## Learned Patterns`): Domain-specific insights for ONE agent. Example: "For ML users, start with decision trees."
+
+See `references/agent-template.md` for format templates (how to write pattern and anti-pattern entries).
 
 ### Updating Global Patterns
 
-#### Step 1: Read Current File
-Use `view` to read current `references/learned-patterns.md`
+#### Step 1: Read SKILL.md
+Use `view` to read `SKILL.md` and find the `## Global Learned Patterns` section at the end.
 
 #### Step 2: Make the Edit
-Use `str_replace` to add the new pattern following the template format in the file.
+Use `str_replace` to add the new pattern under the appropriate subsection (`### Effective Patterns` or `### Anti-Patterns`).
 
 #### Step 3: Complete Packaging Workflow
 See **Packaging Workflow** below.

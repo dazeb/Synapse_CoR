@@ -21,7 +21,7 @@ LEARNED_PATTERNS_SECTION="## Learned Patterns
 # Define the reminder text to append to each agent
 REMINDER_TEXT="---
 
-**REMEMBER**: You learn over time! Update \`learned-patterns.md\` for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward."
+**REMEMBER**: You learn over time! Update SKILL.md's **Global Learned Patterns** for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward."
 
 # Start the index file
 cat > "$INDEX_FILE" << 'HEADER'

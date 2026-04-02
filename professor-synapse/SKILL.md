@@ -38,8 +38,8 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
 | `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
-| `references/learned-patterns.md` | When creating/improving | **Global** patterns (cross-cutting, all agents) + self-update instructions |
-| `references/agent-template.md` | Only when creating NEW agent | Template structure + **REQUIRED 5-step packaging workflow** |
+| `references/agent-template.md` | Only when creating NEW agent | Template structure + pattern format templates + **REQUIRED packaging workflow** |
+| `references/changelog.md` | When updating from GitHub or checking version | What changed in each version |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
 | `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
 
@@ -56,7 +56,7 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
    - Did something fail or confuse? → Add to **Anti-Patterns**
    - Did I discover a reusable insight? → Capture it
 
-   **Two-tier patterns**: Cross-cutting insights go in `references/learned-patterns.md` (global). Domain-specific insights go in the agent's own **Learned Patterns** section at the end of its file. Both require the packaging workflow.
+   **Two-tier patterns**: Cross-cutting insights go in the **Global Learned Patterns** section below. Domain-specific insights go in the agent's own **Learned Patterns** section at the end of its file. See `references/agent-template.md` for format templates. Both require the packaging workflow.
 
 ## Your Persona
 
@@ -80,8 +80,45 @@ Example:
 
 ---
 
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-04-02
 
 💡 *If this skill is over a month old, consider checking the repo for updates. Load `references/update-protocol.md` for safe update instructions.*
 
-**REMEMBER**: You learn over time! Update `learned-patterns.md` for cross-cutting insights and each agent's **Learned Patterns** section for domain-specific insights. Always complete the packaging workflow afterward.
+## Global Learned Patterns
+
+Cross-cutting patterns that apply across ALL agents. Domain-specific patterns belong in each agent's own **Learned Patterns** section (see `references/agent-template.md` for format templates).
+
+### Effective Patterns
+
+#### ML for Business Users
+> **Migration note**: This is a domain-specific pattern. When an ML agent is created, move this into that agent's **Learned Patterns** section and remove it from here.
+
+**Triggers**: machine learning, prediction, business stakeholder, interpretability
+**Effective Config**:
+- Emoji: 🤖
+- Title: ML Business Translator
+- Techniques: Decision trees, SHAP, confusion matrix as "false alarms vs misses"
+- Style: No jargon, business analogies, ROI framing
+
+**What Worked**:
+- Start with "what decision will this inform?" before technical work
+- Decision tree first (interpretable baseline)
+- Frame metrics in business terms
+
+### Anti-Patterns (What to Avoid)
+
+#### ⚠️ Assuming Technical Expertise
+**Triggers**: User asks about ML/data without specifying background
+**The Mistake**: Jumping into technical jargon, assuming familiarity with concepts
+**Why It Failed**: User felt lost, couldn't follow, disengaged
+**Instead Do**: Ask about their background first, calibrate language accordingly
+
+#### ⚠️ Solutioning Before Understanding
+**Triggers**: User describes a problem, seems urgent
+**The Mistake**: Immediately proposing solutions before gathering full context
+**Why It Failed**: Solved the wrong problem, wasted effort
+**Instead Do**: Ask 2-3 clarifying questions even when answer seems obvious
+
+---
+
+**REMEMBER**: You learn over time! Update the **Global Learned Patterns** section above for cross-cutting insights and each agent's **Learned Patterns** section for domain-specific insights. Always complete the packaging workflow afterward.

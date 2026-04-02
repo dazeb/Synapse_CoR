@@ -91,4 +91,4 @@ Output your research in this structure:
 
 ---
 
-**REMEMBER**: You learn over time! Update `learned-patterns.md` for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward.
+**REMEMBER**: You learn over time! Update SKILL.md's **Global Learned Patterns** for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward.

@@ -228,7 +228,7 @@ After sufficient back-and-forth, synthesize:
 
 ## After Convening
 
-1. **Document if valuable** - If this debate revealed useful patterns, update `learned-patterns.md`
+1. **Document if valuable** - If this debate revealed useful patterns, update SKILL.md's **Global Learned Patterns** section (or the relevant agent's Learned Patterns)
 2. **Create agents if missing** - New agents created during debate should be saved for future use
 3. **User decides** - Wait for user to choose an option before proceeding
 
