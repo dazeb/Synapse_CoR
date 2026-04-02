@@ -1,6 +1,6 @@
 #!/bin/bash
 # Rebuild INDEX.md from agent frontmatter
-# Also appends learned-patterns reminder to each agent if not present
+# Also ensures each agent has a Learned Patterns section and reminder
 # Run from project root: bash scripts/rebuild-index.sh
 
 # Get script directory and project root
@@ -9,10 +9,19 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 AGENTS_DIR="$PROJECT_ROOT/agents"
 INDEX_FILE="$AGENTS_DIR/INDEX.md"
 
+# Define the learned patterns section template
+LEARNED_PATTERNS_SECTION="## Learned Patterns
+
+### Effective Patterns
+<!-- Domain-specific patterns that work well for this agent. Add entries as you learn. -->
+
+### Anti-Patterns
+<!-- Domain-specific mistakes to avoid for this agent. Add entries as you learn. -->"
+
 # Define the reminder text to append to each agent
 REMINDER_TEXT="---
 
-**REMEMBER**: One of your superpowers is that you learn over time by updating and referencing your \`learned-patterns.md\`. Review and keep this up to date regularly!"
+**REMEMBER**: You learn over time! Update \`learned-patterns.md\` for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward."
 
 # Start the index file
 cat > "$INDEX_FILE" << 'HEADER'
@@ -46,8 +55,32 @@ for file in "$AGENTS_DIR"/*.md; do
         echo "| [$name]($filename) | $emoji | $description | $triggers |" >> "$INDEX_FILE"
     fi
 
-    # Append learned-patterns reminder if not already present
-    if ! grep -q "One of your superpowers is that you learn over time" "$file"; then
+    # Append Learned Patterns section if not already present
+    if ! grep -q "^## Learned Patterns" "$file"; then
+        # Remove old-style reminder if present (we'll re-add the updated one below)
+        if grep -q "One of your superpowers is that you learn over time" "$file"; then
+            # Remove the old reminder block (--- + blank line + REMEMBER line)
+            sed -i '' '/^---$/,/One of your superpowers is that you learn over time/{
+                /One of your superpowers is that you learn over time/d
+            }' "$file"
+            # Clean up the leftover --- and blank lines at the end
+            sed -i '' -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$file"
+        fi
+        echo "" >> "$file"
+        echo "$LEARNED_PATTERNS_SECTION" >> "$file"
+        echo "" >> "$file"
+        echo "$REMINDER_TEXT" >> "$file"
+        echo "  Added Learned Patterns section to $filename"
+    fi
+
+    # Ensure reminder is present (updated version)
+    if ! grep -q "Always complete the packaging workflow afterward" "$file"; then
+        # Remove old-style reminder if present
+        if grep -q "One of your superpowers is that you learn over time" "$file"; then
+            sed -i '' '/One of your superpowers is that you learn over time/d' "$file"
+            # Clean up trailing blank lines
+            sed -i '' -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$file"
+        fi
         echo "" >> "$file"
         echo "$REMINDER_TEXT" >> "$file"
     fi
@@ -60,7 +93,7 @@ echo "_Last updated: $(date '+%Y-%m-%d %H:%M')_" >> "$INDEX_FILE"
 ENTRY_COUNT=$(($(grep -c '^|' "$INDEX_FILE") - 1))
 
 echo "✅ INDEX.md rebuilt with $ENTRY_COUNT agent(s)"
-echo "✅ Learned-patterns reminder appended to all agents (if not already present)"
+echo "✅ Learned Patterns section ensured on all agents"
 
 echo ""
 echo "📋 NEXT STEPS to complete skill update:"

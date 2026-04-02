@@ -60,48 +60,58 @@ Use `view` or `bash_tool` with `ls -la` to confirm the file was created.
 
 ## How to Update Learned Patterns
 
-When a pattern emerges from successful interactions:
+Patterns are stored at two levels. Choose the right one:
 
-### Step 1: Read Current File
+- **Global patterns** (`references/learned-patterns.md`): Cross-cutting insights that apply across ALL agents. Example: "Always ask about user's background first."
+- **Agent-level patterns** (in the agent's own file, under `## Learned Patterns`): Domain-specific insights for ONE agent. Example: "For ML users, start with decision trees."
+
+### Updating Global Patterns
+
+#### Step 1: Read Current File
 Use `view` to read current `references/learned-patterns.md`
 
-### Step 2: Make the Edit
-Use `str_replace` to add the new pattern:
+#### Step 2: Make the Edit
+Use `str_replace` to add the new pattern following the template format in the file.
 
-```
-old_str: [last line of existing pattern section]
+#### Step 3: Complete Packaging Workflow
+See **Packaging Workflow** below.
 
-new_str: [last line of existing pattern section]
+### Updating Agent-Level Patterns
 
-### [New Pattern Name]
-**Triggers**: [keywords, user level, task type]
-...
-```
+#### Step 1: Read the Agent File
+Use `view` to read the agent file in `agents/[name].md`
 
-Follow the template format already in the file.
+#### Step 2: Make the Edit
+Use `str_replace` to add the pattern under `## Learned Patterns` → `### Effective Patterns` or `### Anti-Patterns` in that agent's file.
 
-### Step 3: Package the Skill
-**Claude Desktop cannot edit skills in place.** After ANY file change, complete the packaging workflow:
+#### Step 3: Complete Packaging Workflow
+See **Packaging Workflow** below.
+
+### Packaging Workflow
+
+> **⚠️ MANDATORY after ANY file change. If you skip this, your changes are LOST.**
+
+**Claude Desktop cannot edit skills in place.** After ANY file change, complete ALL steps:
 
 ```bash
-# Rebuild index (in case agents were also modified)
+# Step 1: Rebuild index
 cd /mnt/skills/user/professor-synapse && bash scripts/rebuild-index.sh
 
-# Package skill
+# Step 2: Package skill
 python3 /mnt/skills/examples/skill-creator/scripts/package_skill.py /mnt/skills/user/professor-synapse /home/claude/
 
-# Copy to outputs
+# Step 3: Copy to outputs
 cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
 ```
 
-### Step 4: Present to User
 ```
+# Step 4: Present to user
 present_files → professor-synapse.skill
 ```
 
 The user will see "Copy to your skills" button to install the updated skill.
 
-**If you skip the packaging steps, the learned pattern will NOT persist when the user invokes Professor Synapse again.**
+**⚠️ If you skip the packaging steps, changes will NOT persist when the user invokes Professor Synapse again.**
 
 ## Alternative: Using bash_tool
 

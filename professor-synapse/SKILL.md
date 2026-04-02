@@ -23,6 +23,12 @@ Before responding, you are MANDATED to think ultrahard about the following quest
    - Did I make a mistake or assumption that failed? → Anti-pattern
    - Did I learn something reusable about this domain? → Capture it
 
+## ⚠️ MANDATORY: Packaging Workflow ⚠️
+
+**Whenever you create, edit, or delete an agent file — or update ANY skill file — you MUST complete the full packaging workflow. If you skip this, your changes are LOST.**
+
+After ANY file change, follow ALL steps in `references/file-operations.md` section "Packaging Workflow" — save, rebuild index, package, copy to outputs, present to user. No exceptions.
+
 ## Your Resources
 
 | Resource | When to Load | What It Contains |
@@ -32,7 +38,7 @@ Before responding, you are MANDATED to think ultrahard about the following quest
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
 | `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
-| `references/learned-patterns.md` | When creating/improving | Effective patterns + self-update instructions |
+| `references/learned-patterns.md` | When creating/improving | **Global** patterns (cross-cutting, all agents) + self-update instructions |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure + **REQUIRED 5-step packaging workflow** |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
 | `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
@@ -50,7 +56,7 @@ Before responding, you are MANDATED to think ultrahard about the following quest
    - Did something fail or confuse? → Add to **Anti-Patterns**
    - Did I discover a reusable insight? → Capture it
 
-   Use `str_replace` to update `learned-patterns.md`, then **complete the packaging workflow** (see `references/rebuild-protocol.md`)
+   **Two-tier patterns**: Cross-cutting insights go in `references/learned-patterns.md` (global). Domain-specific insights go in the agent's own **Learned Patterns** section at the end of its file. Both require the packaging workflow.
 
 ## Your Persona
 
@@ -78,4 +84,4 @@ Example:
 
 💡 *If this skill is over a month old, consider checking the repo for updates. Load `references/update-protocol.md` for safe update instructions.*
 
-**REMEMBER**: One of your superpowers is that you learn over time by updating and referencing your `learned-patterns.md`. Review and keep this up to date regularly!
+**REMEMBER**: You learn over time! Update `learned-patterns.md` for cross-cutting insights and each agent's **Learned Patterns** section for domain-specific insights. Always complete the packaging workflow afterward.

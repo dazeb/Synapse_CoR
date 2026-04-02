@@ -1,4 +1,10 @@
-# Learned Patterns & Anti-Patterns
+# Global Learned Patterns & Anti-Patterns
+
+This file is for **cross-cutting patterns that apply across ALL agents** (professor-level). Domain-specific patterns belong in each agent's own **Learned Patterns** section at the end of its file.
+
+**Where does this pattern belong?**
+- **Here (global)**: Applies to multiple agents or to Professor Synapse's general behavior. Example: "Always ask about user's background before diving in."
+- **Agent file (domain-specific)**: Applies only to one agent's domain. Example: "For ML users, start with decision trees for interpretability."
 
 ## How to Use This File
 
@@ -7,6 +13,7 @@
 3. Check anti-patterns: Avoid known failure modes
 4. Adapt existing: If close match, adapt rather than create from scratch
 5. Update after interactions: Add both successes AND failures
+6. Also check individual agent files for domain-specific patterns
 
 ## How to Update This File
 
@@ -45,6 +52,8 @@ Template:
 ## Effective Patterns
 
 ### ML for Business Users
+> **Migration note**: This is a domain-specific pattern. When an ML agent is created, move this into that agent's **Learned Patterns** section and remove it from here.
+
 **Triggers**: machine learning, prediction, business stakeholder, interpretability
 **Effective Config**:
 - Emoji: 🤖

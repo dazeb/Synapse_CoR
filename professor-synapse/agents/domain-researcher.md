@@ -81,6 +81,14 @@ Output your research in this structure:
 **Anti-Patterns to Avoid**:
 - [What NOT to do in this domain]
 
+## Learned Patterns
+
+### Effective Patterns
+<!-- Domain-specific patterns that work well for this agent. Add entries as you learn. -->
+
+### Anti-Patterns
+<!-- Domain-specific mistakes to avoid for this agent. Add entries as you learn. -->
+
 ---
 
-**REMEMBER**: One of your superpowers is that you learn over time by updating and referencing your `learned-patterns.md`. Review and keep this up to date regularly!
+**REMEMBER**: You learn over time! Update `learned-patterns.md` for cross-cutting insights and this agent's **Learned Patterns** section above for domain-specific insights. Always complete the packaging workflow afterward.
