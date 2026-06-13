@@ -42,13 +42,20 @@ print('matches:', [x['text'] for x in m.get('matches',[])])"
 ```
 Expect `matches: ['selfcheck probe fact']` — proving summon recalls the **real** store (not a nested/empty one) and the default (reinforcing) recall surfaces it.
 
-**5. Store integrity**
+**5. Write-time duplicate check**
+```bash
+python3 scripts/memory.py check --kind fact --text "selfcheck probe fact" --tags selfcheck \
+  | python3 -c "import json,sys; print('has_duplicate:', json.load(sys.stdin)['has_duplicate'])"
+```
+Expect `has_duplicate: True` — the probe from step 4 is flagged as a near-duplicate (read-only; writes nothing).
+
+**6. Store integrity**
 ```bash
 python3 scripts/memory.py validate    # working memory structure
 python3 scripts/memory.py doctor       # long-term db integrity (integrity_check: ok)
 ```
 
-**6. Forget retires the probe (cleanup)**
+**7. Forget retires the probe (cleanup)**
 ```bash
 ID=$(python3 scripts/memory.py recall --query selfcheck --no-reinforce \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['candidates'][0]['id'])")
@@ -74,8 +81,10 @@ report PASS/FAIL with the relevant output:
    reports no match and exits 3.
 4. Recall reinforces + reads the real store: record a `fact` tagged `selfcheck`,
    then `summon.py memory-agent --query selfcheck` surfaces it under Recalled context.
-5. `memory.py validate` and `memory.py doctor` are clean.
-6. Forget cleanup: forget the selfcheck fact, then a follow-up recall returns 0.
+5. Write-time check: `memory.py check --kind fact --text "selfcheck probe fact"
+   --tags selfcheck` reports `has_duplicate: true`.
+6. `memory.py validate` and `memory.py doctor` are clean.
+7. Forget cleanup: forget the selfcheck fact, then a follow-up recall returns 0.
 
 Note: steps 4–6 write and then remove a throwaway `selfcheck` record in the
 installed store; that is expected and step 6 cleans it up.

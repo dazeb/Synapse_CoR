@@ -497,5 +497,73 @@ class Graph(MemTest):
         self.assertEqual(self.cli_json("doctor")["invariant_issues"], [])
 
 
+class SimilarityCheck(MemTest):
+    """Write-time duplicate/contradiction signal (check verb + record advisory)."""
+
+    def seed(self, text, kind="fact", agent="a", **kw):
+        argv = ["--agent", agent, "record", "--kind", kind, "--text", text]
+        for k, v in kw.items():
+            argv += [f"--{k}", *(v if isinstance(v, list) else [v])]
+        self.cli(*argv)
+        return self.id_by_text(text)
+
+    def test_check_flags_duplicate(self):
+        self.seed("The user works at Synaptic Labs as founder",
+                  tags=["employer"], confidence="high")
+        d = self.cli_json("check", "--kind", "fact",
+                           "--text", "User works at Synaptic Labs as the founder",
+                           "--tags", "employer")
+        self.assertTrue(d["has_duplicate"])
+        self.assertTrue(d["similar"][0]["duplicate"])
+
+    def test_check_flags_conflict_on_high_confidence(self):
+        self.seed("The user works at Synaptic Labs as founder",
+                  tags=["employer"], confidence="high")
+        d = self.cli_json("check", "--kind", "fact",
+                           "--text", "The user now works at OpenAI instead",
+                           "--tags", "employer")
+        self.assertFalse(d["has_duplicate"])
+        self.assertTrue(d["has_conflict"], "same-subject high-confidence fact is a conflict")
+
+    def test_low_confidence_existing_is_not_a_conflict(self):
+        self.seed("The user works at Synaptic Labs as founder",
+                  tags=["employer"], confidence="low")
+        d = self.cli_json("check", "--kind", "fact",
+                           "--text", "The user now works at OpenAI instead",
+                           "--tags", "employer")
+        self.assertFalse(d["has_conflict"], "only high-confidence records warrant a conflict flag")
+
+    def test_check_unrelated_is_quiet(self):
+        self.seed("The user works at Synaptic Labs as founder", tags=["employer"])
+        d = self.cli_json("check", "--kind", "note",
+                          "--text", "Water the office plants on fridays")
+        self.assertEqual(d["similar"], [])
+        self.assertFalse(d["has_duplicate"] or d["has_conflict"])
+
+    def test_check_is_read_only(self):
+        self.seed("a durable fact", tags=["x"])
+        before = self.cli_json("export")["record"]
+        self.cli_json("check", "--kind", "fact", "--text", "a durable fact", "--tags", "x")
+        after = self.cli_json("export")["record"]
+        self.assertEqual(len(before), len(after), "check must not write a record")
+
+    def test_record_advisory_warns_on_duplicate(self):
+        self.seed("The user works at Synaptic Labs as founder", tags=["employer"])
+        out = self.cli("--agent", "a", "record", "--kind", "fact",
+                       "--text", "User works at Synaptic Labs as the founder",
+                       "--tags", "employer")
+        self.assertIn("possible duplicate", out)
+        self.assertIn("recorded fact", out, "the write still succeeds (advisory is non-blocking)")
+
+    def test_dropped_records_are_not_surfaced(self):
+        rid = self.seed("The user works at Synaptic Labs as founder",
+                        tags=["employer"], confidence="high")
+        self.cli("forget", "--ids", rid)
+        d = self.cli_json("check", "--kind", "fact",
+                          "--text", "User works at Synaptic Labs as the founder",
+                          "--tags", "employer")
+        self.assertEqual(d["similar"], [], "a forgotten record is not a duplicate target")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

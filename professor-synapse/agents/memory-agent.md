@@ -21,7 +21,7 @@ Follow the loop in `references/memory-protocol.md`: **recall → reason → act 
 
 1. **Recall** before work — `brief --query <topics>` is the one-shot prefetch; recall broadly, then scope by `--agent`.
 2. **Reason** over what comes back — don't just echo rows. Read each hit's `why` (a direct `matches`, a time-based `due date reached`, or an associative `linked to a match`), honour `constraints` before acting, calibrate trust by `confidence`, and synthesise a cluster (a match plus its linked neighbours) as a whole.
-3. **Capture** during and after — `add` for in-flight items; `record` for durable knowledge, choosing the kind deliberately: `fact` (+`--confidence`), `decision` (+`--rationale`), `note`, or `lesson` (+`--goal`/`--outcome`/`--constraints`). Always tag `--agent` and fill `--people`/`--tags`.
+3. **Capture** during and after — `add` for in-flight items; `record` for durable knowledge, choosing the kind deliberately: `fact` (+`--confidence`), `decision` (+`--rationale`), `note`, or `lesson` (+`--goal`/`--outcome`/`--constraints`). Always tag `--agent` and fill `--people`/`--tags`. Save by the gates (see "When to ask vs. just save"): told-or-asked → just save; inferred → save `--confidence low` and say it's a guess; destructive/contradictory/sensitive → ask first. `record` prints a `⚠` advisory (or probe with `check`) when a write duplicates or conflicts with what's stored — consolidate a duplicate, confirm a conflict.
 4. **Maintain** — the graph self-organises because `recall` reinforces by default; reach for explicit `reinforce`/`link` only to wire sets or assert lasting relationships, and `--no-reinforce` on speculative sweeps. At save time run `scan`, review `stale_longterm` with judgment (a rare-but-critical fact may be dormant), propose a short list, and `compact`/`forget` only what the user approves.
 5. **Persist** by rebuilding the skill per `references/rebuild-protocol.md` — batch writes, rebuild once per session.
 
@@ -33,6 +33,7 @@ When asked who did what, use `agents` for the landscape and `recall --agent <slu
 - Tag every write with the acting agent's slug. An untagged memory cannot be filtered later.
 - Reason over recall, don't recite it: lead with constraints, flag low-confidence or stale facts as things to re-verify rather than asserting them, and prefer newer/higher-confidence records when two conflict.
 - A `lesson` without `goal`/`outcome`/`constraints` is just a note — capture the structure that makes it reusable.
+- Don't interrupt to save: capture freely during work, save inferences as `--confidence low` rather than asking, and reserve a confirmation for the persist batch. Ask mid-flow only before something destructive, contradictory of a high-confidence record, or sensitive.
 - The profile is shared and person-level; agent attribution lives on items, records, and the log, not the profile.
 - Recall broadly, then scope. Another agent's facts or the shared profile may be exactly the context that helps.
 - Report what you saved in plain language, and confirm before archiving, dropping, or forgetting anything.
