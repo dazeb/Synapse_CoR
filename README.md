@@ -34,10 +34,11 @@ A more powerful version designed for Claude. This skill **grows over time** — 
 **Features:**
 - 🔎 **Domain Researcher** agent that browses the web before creating new experts
 - 📚 **Self-building agent library** — created agents are saved for future sessions
-- 🧠 **Pattern learning** — captures what works and what doesn't, auto-appended to all agents
+- 🧠 **Persistent memory** — a shared, agent-tagged store that remembers across sessions, with ranked-fusion recall (see below)
+- 💡 **Pattern learning** — captures what works and what doesn't (Global Learned Patterns in SKILL.md + per-agent patterns)
 - 📋 **Auto-generated index** — agents are automatically catalogued
 - 🎭 **Multi-agent debates** — convene multiple specialists for complex decisions
-- 🔄 **Smart updates** — fetch updates from GitHub without losing customizations
+- 🔄 **Versioned updates** — pull tagged releases from GitHub (codeload tarball) without losing your agents or memory
 - 🔧 **Skill rebuilding** — easy rebuild workflow for local changes
 
 ---
@@ -59,26 +60,42 @@ A more powerful version designed for Claude. This skill **grows over time** — 
      - "I need guidance on..."
      - "I need an expert for..."
 
+> 💡 Grab the latest tagged release from the [Releases page](https://github.com/ProfSynapse/Professor-Synapse/releases) for a known-good version.
+
+### Updating
+
+Just ask Professor Synapse to **"check for updates."** It compares its `Version:` against the latest release tag, downloads the canonical repo as a codeload tarball, and merges the update in — **preserving your custom agents, learned patterns, and `memory/` store**. It then rebuilds the skill and hands you the new package to install via "Copy to your skills." See `references/update-protocol.md` for the full mechanics.
+
 ### Skill Structure
 
 ```
 professor-synapse/
-├── SKILL.md                      # Main identity + workflow
+├── SKILL.md                      # Identity, workflow + Global Learned Patterns
 ├── agents/
 │   ├── INDEX.md                  # Auto-generated registry
-│   └── domain-researcher.md      # Base research agent
+│   ├── domain-researcher.md      # Base research agent
+│   └── memory-agent.md           # 🧠 Memory Keeper
+├── memory/
+│   ├── memory.json               # Working memory (profile + active items)
+│   └── longterm.db               # SQLite long-term store + change log
 ├── references/
-│   ├── learned-patterns.md       # What works + anti-patterns
 │   ├── agent-template.md         # Structure for new agents
+│   ├── summon-agent-protocol.md  # How to "become" an agent
+│   ├── convener-protocol.md      # Multi-agent debate facilitation
+│   ├── memory-protocol.md        # How recall/capture/cleanup work
+│   ├── memory-data-model.md      # Memory schema + ranked-fusion search
 │   ├── domain-expertise.md       # Domain mappings
 │   ├── file-operations.md        # How to save/update files
-│   ├── convener-protocol.md      # Multi-agent debate facilitation
-│   ├── update-protocol.md        # GitHub update workflow
-│   └── rebuild-protocol.md       # Local change rebuild workflow
+│   ├── scripts-protocol.md       # Standards for agent scripts
+│   ├── update-protocol.md        # Versioned update workflow (codeload)
+│   ├── rebuild-protocol.md       # Local change rebuild workflow
+│   └── changelog.md              # Version history
 └── scripts/
-    ├── rebuild-index.sh           # Regenerate INDEX.md
-    ├── fetch-github-file.sh       # Fetch files from GitHub
-    └── github_blob_parser.py      # Parse GitHub HTML for content
+    ├── memory.py                 # Shared agent-tagged memory CLI
+    ├── test_memory.py            # Memory test suite (stdlib unittest)
+    ├── rebuild-index.sh          # Regenerate INDEX.md
+    ├── fetch-github-file.sh      # Fetch files from GitHub (update fallback)
+    └── github_blob_parser.py     # Parse GitHub HTML (update fallback)
 ```
 
 ### Recommended: Claude Project Setup
@@ -114,7 +131,8 @@ Then follow these instructions:
    - Hosts a structured debate among specialist agents
    - Synthesizes insights and presents options with trade-offs
 5. **Saves new agents** → New agents are stored in `agents/` for future reuse
-6. **Learns patterns** → All agents update `learned-patterns.md` with what worked and what didn't
+6. **Remembers** → Recalls relevant context at the start of work and captures new facts/decisions afterward, each tagged with the acting agent (via `scripts/memory.py`)
+7. **Learns patterns** → Cross-cutting insights go in SKILL.md's Global Learned Patterns; domain-specific ones go in each agent's own Learned Patterns section
 
 ---
 
@@ -132,13 +150,15 @@ Then follow these instructions:
 
 + **Multi-Agent Debates (Convener Protocol):** When facing complex decisions with trade-offs, Professor Synapse can convene multiple expert agents to debate from different perspectives, then synthesize their insights into actionable recommendations.
 
-+ **Smart GitHub Updates:** Fetch updates from the canonical repository while preserving your custom agents and learned patterns. The update protocol intelligently merges changes without overwriting your customizations.
++ **Persistent Agent-Tagged Memory:** A shared store (`scripts/memory.py`) that remembers across sessions. Every item is tagged with the agent that created it, so memory can be recalled broadly or filtered by agent. A working-memory layer (`memory.json`) holds the live profile and active items; a SQLite long-term store (`longterm.db`) holds archived decisions, notes, and facts plus a change log. The 🧠 Memory Keeper agent and the rest of the skill lean on it for recall and capture.
+
++ **Ranked-Fusion Recall:** `recall --query` retrieves with SQLite FTS5 (stemming, prefix, column-weighted BM25 — hits in people/tags outrank free text) and re-ranks by fusing relevance, recency, and record kind via Reciprocal Rank Fusion. A `brief` verb gives a one-shot start-of-session prefetch. No external dependencies, no embeddings — it stays fast and portable.
+
++ **Versioned Updates:** Each release is tagged; the skill carries a `Version:` marker and detects newer releases via `releases/latest`. The update protocol downloads the canonical repo as a single codeload source tarball, then merges it in **while preserving your custom agents, learned patterns, and — critically — your `memory/` store**. A legacy per-file fetch (`fetch-github-file.sh` + `github_blob_parser.py`) remains as a fallback.
 
 + **Skill Rebuilding:** Easy workflow for rebuilding the skill after adding agents, scripts, or making any local changes. Uses skill-creator to package updates.
 
-+ **Pattern Learning:** All agents (Professor Synapse + summoned specialists) are reminded to update `learned-patterns.md` with what works and what doesn't. This reminder is automatically appended to every agent by the index rebuild script.
-
-+ **GitHub Fetching Scripts:** Helper scripts to fetch files from GitHub despite API restrictions, enabling the update protocol to work reliably.
++ **Pattern Learning:** Cross-cutting insights live in SKILL.md's Global Learned Patterns; domain-specific ones live in each agent's own Learned Patterns section. The index rebuild script ensures every agent has the section.
 
 ---
 

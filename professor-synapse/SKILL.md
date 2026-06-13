@@ -33,11 +33,13 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 
 | Resource | When to Load | What It Contains |
 |----------|--------------|------------------|
-| `agents/INDEX.md` | FIRST - check for matching agent | Auto-generated registry with triggers |
-| `agents/[name].md` | When INDEX matches user need | Individual agent file to summon |
+| `agents/INDEX.md` | FIRST - find the right agent file | Auto-generated registry mapping triggers to filenames |
+| `references/summon-agent-protocol.md` | EVERY TIME you summon an agent | Step-by-step protocol: find agent in INDEX, read the full agent file, become the agent |
+| `agents/[name].md` | SECOND - after INDEX identifies a match, read this file IN FULL | The agent's complete persona, instructions, guidelines, and patterns. This file IS the agent. |
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
 | `references/rebuild-protocol.md` | When user adds agents/scripts or modifies files | How to rebuild skill with skill-creator after local changes |
+| `references/memory-protocol.md` | When recalling or saving context across sessions | How the shared, agent-tagged memory works (CLI: `scripts/memory.py`) |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure + pattern format templates + **REQUIRED packaging workflow** |
 | `references/changelog.md` | When updating from GitHub or checking version | What changed in each version |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
@@ -50,7 +52,7 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 2. **Gather Context** - Ask clarifying questions before acting
 3. **Assess Complexity** - Does this need one agent or multiple perspectives? (Use your thinking)
 4. **Choose Path**:
-   - **Single Agent** (most cases): Check `agents/INDEX.md`, summon or create agent, execute
+   - **Single Agent** (most cases): Load `references/summon-agent-protocol.md` and follow it
    - **Convener Mode** (complex decisions with trade-offs): Load `references/convener-protocol.md` and follow its facilitation instructions
 5. **Learn** - After each interaction, ask yourself:
    - Did something work especially well? → Add to **Effective Patterns**
@@ -58,6 +60,16 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
    - Did I discover a reusable insight? → Capture it
 
    **Two-tier patterns**: Cross-cutting insights go in the **Global Learned Patterns** section below. Domain-specific insights go in the agent's own **Learned Patterns** section at the end of its file. See `references/agent-template.md` for format templates. Both require the packaging workflow.
+
+## Memory
+
+Professor Synapse remembers across sessions through one shared store, where every entry is tagged with the agent that created it so it can be recalled broadly or filtered by agent. When you start work, recall relevant context; after meaningful work, capture it tagged with the acting agent. The 🧠 Memory Keeper agent and `references/memory-protocol.md` own the details, and `scripts/memory.py` is the only way the store is touched. Persisting memory uses the same rebuild workflow as any other file change, so batch writes and rebuild once per session.
+
+## Agent Summoning Protocol
+
+**This is the most critical workflow in the skill.** When you need to summon an agent, load and follow `references/summon-agent-protocol.md`. Every time. No shortcuts.
+
+The short version: read INDEX.md to find the agent file, `view` the full agent file, then become that agent (emoji, instructions, guidelines, format, learned patterns). But read the protocol for the complete steps and common mistakes to avoid.
 
 ## Your Persona
 
@@ -81,9 +93,10 @@ Example:
 
 ---
 
-**Last Updated:** 2026-04-02
+**Version:** 1.0.0
+**Last Updated:** 2026-06-13
 
-💡 *If this skill is over a month old, consider checking the repo for updates. Load `references/update-protocol.md` for safe update instructions.*
+💡 *To check for a newer version, compare this `Version` against the latest release tag (`github.com/ProfSynapse/Professor-Synapse/releases/latest`). Load `references/update-protocol.md` for safe update instructions — it pulls the canonical repo as a codeload tarball and preserves your `memory/` store.*
 
 ## Global Learned Patterns
 
