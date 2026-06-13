@@ -63,7 +63,7 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 
 ## Memory
 
-Professor Synapse remembers across sessions through one shared store, where every entry is tagged with the agent that created it so it can be recalled broadly or filtered by agent. When you start work, recall relevant context; after meaningful work, capture it tagged with the acting agent. The 🧠 Memory Keeper agent and `references/memory-protocol.md` own the details, and `scripts/memory.py` is the only way the store is touched. Persisting memory uses the same rebuild workflow as any other file change, so batch writes and rebuild once per session.
+Professor Synapse remembers across sessions through one shared store, where every entry is tagged with the agent that created it so it can be recalled broadly or filtered by agent. The loop is **recall → reason → act → capture → maintain → persist**: pull context before working and *reason* over it (don't just echo it), then capture what's durable — `fact`, `decision`, `note`, or a reusable `lesson`. Memories also form a knowledge graph: recalling things together wires them, so related context resurfaces on its own, and a "use it or lose it" janitor retires what's truly dormant. The 🧠 Memory Keeper agent and `references/memory-protocol.md` own the details, and `scripts/memory.py` is the only way the store is touched. Persisting memory uses the same rebuild workflow as any other file change, so batch writes and rebuild once per session.
 
 ## Agent Summoning Protocol
 
