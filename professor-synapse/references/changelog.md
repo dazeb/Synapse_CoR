@@ -4,11 +4,26 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
-## Unreleased
+## v2.0.0 — 2026-06-13
 
-- **`scripts/update.sh`**: Updates are now a single script, not a hand-run sequence. It detects the latest release tag (`releases/latest`), downloads the canonical codeload tarball, overlays your local `memory/` store and custom agents, flags `SKILL.md`/changed shared agents as `*.local-MERGE` for hand-merging, and rebuilds `INDEX.md`. Supports `--check`, `--ref`, `--out`, `--force`. It prepares the merged tree but does not install — you still package and click "Copy to your skills".
-- **Removed the legacy HTML blob scrapers** (`scripts/fetch-github-file.sh`, `scripts/github_blob_parser.py`). With the codeload tarball as the update mechanism there is no per-file scraping path; the `html2text` dependency is gone. If a release ever has no tag, `update.sh` falls back to the `main` branch tarball automatically.
-- **Docs**: `update-protocol.md` leads with `scripts/update.sh` (manual codeload steps kept as the under-the-hood reference); `scripts-protocol.md` catalog and `README.md` updated to match.
+Major version marking the memory architecture and the script-driven update pipeline as the new baseline. Consolidates the v1.1.0 memory work with a one-command updater and removes the legacy HTML-scraping update path.
+
+**Breaking / behavioral:**
+
+- **Removed the legacy HTML blob scrapers** (`scripts/fetch-github-file.sh`, `scripts/github_blob_parser.py`) and the `html2text` dependency. Updates no longer scrape GitHub blob pages file-by-file; the canonical codeload tarball is the only fetch path. Anything that called those scripts directly must switch to `scripts/update.sh`.
+- **Update mechanism is now script-driven.** `references/update-protocol.md` leads with `scripts/update.sh`; the hand-run codeload sequence is kept only as an under-the-hood reference.
+
+**Added:**
+
+- **`scripts/update.sh`** — one command does the whole update: detects the latest release tag (`releases/latest`), downloads the canonical codeload tarball (pinned to the tag, falling back to `main`), overlays your local `memory/` store and custom agents, flags `SKILL.md`/changed shared agents as `*.local-MERGE` for hand-merging, and rebuilds `INDEX.md`. Supports `--check`, `--ref`, `--out`, `--force`. It prepares the merged tree but does not install — you still package and click "Copy to your skills".
+
+**Carried forward from v1.1.0 (the memory system, now part of the 2.0 baseline):**
+
+- Shared, agent-tagged memory store via `scripts/memory.py` (working memory + SQLite long-term + change log), with `references/memory-protocol.md` and `references/memory-data-model.md`.
+- Ranked-fusion recall (SQLite FTS5 + column-weighted BM25, re-ranked by recency and record kind via RRF; `LIKE` fallback) and the one-shot `brief` prefetch verb.
+- 🧠 Memory Keeper agent and a 25-case stdlib test suite (`scripts/test_memory.py`).
+
+**Docs:** `scripts-protocol.md` catalog and `README.md` updated to match; `SKILL.md` bumped to 2.0.0.
 
 ## v1.1.0 — 2026-06-13
 
