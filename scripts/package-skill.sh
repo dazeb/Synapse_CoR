@@ -34,7 +34,9 @@ zip -r professor-synapse.zip professor-synapse/ \
     -x "professor-synapse/.DS_Store" \
     -x "professor-synapse/**/.DS_Store" \
     -x "professor-synapse/**/*.pyc" \
-    -x "professor-synapse/**/__pycache__/*"
+    -x "professor-synapse/**/__pycache__/*" \
+    -x "professor-synapse/**/*.bak" \
+    -x "professor-synapse/memory/memory.json.bak"
 
 echo ""
 echo "✅ Created: $OUTPUT_FILE"
