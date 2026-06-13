@@ -641,12 +641,23 @@ def cmd_scan(root, args):
         if affinity >= GRAPH_SPARE_AFFINITY:
             continue  # spared: part of a live cluster
         stale_lt.append({"id": rid, "last_used": stamp, "affinity": affinity})
+
+    # Relied-on but unverified: below-high records that carry a `verify` path (a known
+    # way to firm them up). Sorted by reliance (most recently used / best-connected
+    # first) so the records the work keeps leaning on float to the top to `reconfirm`.
+    unverified = []
+    for rid, conf, verify, last_used in con.execute(
+        "SELECT id,confidence,verify,last_used FROM record WHERE status != 'dropped' "
+        f"AND verify IS NOT NULL AND verify != '' AND confidence IN ('low','medium'){clause}", a):
+        unverified.append({"id": rid, "confidence": conf, "verify": verify,
+                           "last_used": last_used, "affinity": round(conn_map.get(rid, 0.0), 4)})
+    unverified.sort(key=lambda u: (u["last_used"] or "", u["affinity"]), reverse=True)
     con.close()
 
     print(json.dumps({"overdue": overdue, "done": done, "stale_days": STALE_DAYS,
                       "stale": stale, "duplicates": dupes, "count": len(items),
                       "longterm_stale_days": LONGTERM_STALE_DAYS,
-                      "stale_longterm": stale_lt}, indent=2))
+                      "stale_longterm": stale_lt, "unverified": unverified}, indent=2))
 
 
 def cmd_compact(root, args):
@@ -1185,6 +1196,40 @@ def cmd_forget(root, args):
     print(f"forgot {forgotten} record(s)")
 
 
+def cmd_reconfirm(root, args):
+    """Close the verification loop on a record: fold in the evidence you found
+    (`source`), adjust `confidence` (up or down — disconfirming evidence is valid),
+    optionally rewrite or clear the remaining `verify` path, reset the staleness
+    clock (it's a reactivation), and log the change. Acts on long-term records."""
+    if args.confidence is None and args.source is None and args.verify is None:
+        sys.exit("nothing to reconfirm: pass at least one of --confidence/--source/--verify")
+    con = connect_db(root)
+    row = con.execute(
+        "SELECT agent,confidence,source,verify FROM record WHERE id=? AND status != 'dropped'",
+        (args.id,)).fetchone()
+    if row is None:
+        con.close()
+        sys.exit(f"unknown (or dropped) record id: {args.id}")
+    agent, old_conf, old_source, old_verify = row
+    new_conf = _check_confidence(args.confidence) if args.confidence else old_conf
+    # Evidence held grows a trail: append by default so prior provenance isn't lost.
+    new_source = old_source
+    if args.source is not None:
+        new_source = args.source if (args.replace_source or not old_source) \
+            else f"{old_source}; {args.source}"
+    # Pass --verify "" to clear the path (walked); pass new text to rewrite; omit to keep.
+    new_verify = (args.verify or None) if args.verify is not None else old_verify
+    con.execute("UPDATE record SET confidence=?, source=?, verify=?, last_used=? WHERE id=?",
+                (new_conf, new_source, new_verify, utc_now(), args.id))
+    summary = f"reconfirm {old_conf or 'n/a'}→{new_conf or 'n/a'}"
+    if args.source:
+        summary += f" ({args.source})"
+    log_event(con, agent, "reconfirm", args.id, summary)
+    con.commit()
+    con.close()
+    print(f"reconfirmed {args.id}: confidence {old_conf or 'n/a'} → {new_conf or 'n/a'}")
+
+
 def cmd_validate(root, args):
     p = working_path(root)
     if not p.exists():
@@ -1406,6 +1451,14 @@ def build_parser():
     fg.add_argument("--ids", nargs="+", required=True)
     fg.add_argument("--reason")
 
+    rcf = sub.add_parser("reconfirm", help="close the verify loop: fold in evidence, adjust confidence, log it")
+    rcf.add_argument("--id", required=True)
+    rcf.add_argument("--confidence", help="new level after checking (high|medium|low); may go up or down")
+    rcf.add_argument("--source", help="evidence you confirmed it with (appended to existing unless --replace-source)")
+    rcf.add_argument("--replace-source", dest="replace_source", action="store_true",
+                     help="overwrite source instead of appending to the existing trail")
+    rcf.add_argument("--verify", help="rewrite the remaining verify path; pass an empty string to clear it")
+
     sub.add_parser("agents", help="list agents that have touched memory, with counts")
 
     v = sub.add_parser("validate", help="validate memory.json")
@@ -1424,7 +1477,7 @@ DISPATCH = {
     "brief": cmd_brief, "agents": cmd_agents, "validate": cmd_validate, "doctor": cmd_doctor,
     "render": cmd_render, "export": cmd_export,
     "link": cmd_link, "unlink": cmd_unlink, "links": cmd_links,
-    "reinforce": cmd_reinforce, "forget": cmd_forget,
+    "reinforce": cmd_reinforce, "forget": cmd_forget, "reconfirm": cmd_reconfirm,
 }
 
 

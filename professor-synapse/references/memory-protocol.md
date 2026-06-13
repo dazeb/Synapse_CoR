@@ -37,7 +37,7 @@ Read the whole record, not just `text`:
 
 - **`constraints`** are gotchas to honour *before* you act — surface them proactively ("note: the API needs the featured image uploaded first").
 - **`goal`/`outcome`** on a `lesson` tell you what it was for and whether it worked — reuse the approach, but check the constraints still hold before repeating it.
-- **`confidence`** calibrates trust. Lean on `high`; treat `low` (especially if old) as a hypothesis to re-verify, and say so rather than asserting it. Its *basis* travels with it: **`source`** is the evidence held (where the belief comes from), **`verify`** is the upgrade path (what evidence is available and how to get it), and **`unknowns`** are the gaps. On a shaky hit, surface the path proactively — "I believe X (low confidence — only mentioned once; I can confirm via the HubSpot record; unknown whether it's still current)" — and offer to run down `verify` when it matters.
+- **`confidence`** calibrates trust. Lean on `high`; treat `low` (especially if old) as a hypothesis to re-verify, and say so rather than asserting it. Its *basis* travels with it: **`source`** is the evidence held (where the belief comes from), **`verify`** is the upgrade path (what evidence is available and how to get it), and **`unknowns`** are the gaps. On a shaky hit, surface the path proactively — "I believe X (low confidence — only mentioned once; I can confirm via the HubSpot record; unknown whether it's still current)" — and offer to run down `verify` when it matters. Once you do, record the outcome with `reconfirm` (see "Closing the verify loop") so the level and its evidence move together.
 - **`kind`** frames the record: a `decision` comes with a `rationale`; a `fact` is a durable truth; a `lesson` is a how-to to reuse; a `note` is background.
 
 **Synthesize across hits.** When a direct match arrives with its `linked to a match` neighbours, that's a topic cluster — reason over it as a whole, lead with the constraints, and reconcile any conflicts (a newer or higher-confidence record beats an older or lower one; if they genuinely disagree, say so). Recall is associative + keyword search, not ground truth — don't over-trust a lone low-confidence or stale hit.
@@ -115,10 +115,20 @@ At query time, `recall --query` seeds from the top text matches and spreads one 
 
 ## Janitor (keep it from going stale)
 
-`python3 scripts/memory.py scan` (optionally `--agent <slug>`) returns overdue, done, stale, and duplicate active items, plus `stale_longterm` — long-term records not used in `LONGTERM_STALE_DAYS` (60) **and** not well-connected in the graph. Add judgment a script cannot, then propose a short maintenance list and let the user approve.
+`python3 scripts/memory.py scan` (optionally `--agent <slug>`) returns overdue, done, stale, and duplicate active items, plus `stale_longterm` — long-term records not used in `LONGTERM_STALE_DAYS` (60) **and** not well-connected in the graph — and `unverified` (see below). Add judgment a script cannot, then propose a short maintenance list and let the user approve.
 
 - Active items: `compact --archive <ids>` or `--drop <ids> --reason "..."`. Resurface a parked item with `resurface --id <id>` (it returns under its original id and agent; its edges are cleared).
 - Long-term records on the chopping block: `forget --ids <ids> [--reason ...]` retires them (marked `dropped`, excluded from recall, edges removed).
+
+### Closing the verify loop
+
+`scan` also returns **`unverified`** — below-`high` records that carry a `verify` path (a known way to firm them up), sorted by reliance (most recently used / best-connected first), so the shaky things the work keeps leaning on float to the top. When you actually run one down, record the result with **`reconfirm`**:
+
+```
+reconfirm --id <id> [--confidence high|medium|low] [--source "what you confirmed it with"] [--verify ""]
+```
+
+It folds the new evidence into `source` (appended to the existing trail, or `--replace-source` to overwrite), adjusts `confidence` — **up or down**, since disconfirming evidence is just as valid — clears or rewrites the `verify` path (pass `--verify ""` once it's walked), resets the staleness clock, and logs the change. So a low-confidence guess doesn't stay a guess forever: `scan` shows what's worth confirming, you check it, and `reconfirm` promotes it (or demotes it) with the evidence attached.
 
 **Use it or lose it:** any reactivation — a `recall`/`brief` that surfaces it (reinforce is the default), an explicit `reinforce`, or a `link` — resets a record's `last_used`, and a strongly-wired record is spared even when dormant. So frequently-recalled and well-connected memories survive; truly forgotten ones surface for cleanup.
 
