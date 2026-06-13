@@ -41,7 +41,38 @@ Verified in the skill sandbox:
 
 ---
 
-## Primary Method: codeload Source Tarball
+## Primary Method: `scripts/update.sh`
+
+One script does the whole fetch-and-merge. It detects the latest release, downloads the canonical codeload tarball, and builds a merged tree that **preserves your `memory/` store and custom agents** — then stops so you can package it. It never installs.
+
+```bash
+# See whether an update exists (no changes made)
+bash scripts/update.sh --check
+
+# Build the merged update tree (default output: /tmp/ps-update)
+bash scripts/update.sh
+#   --ref <tag|branch>   fetch a specific tag/branch (default: latest release, else main)
+#   --out <dir>          where to build the merged tree
+#   --force              rebuild even if already current
+```
+
+What it does, in order: reads the local `**Version:**` from `SKILL.md`; resolves the latest tag via `releases/latest`; downloads `codeload.github.com/.../tar.gz/<ref>`; overlays your local `memory/memory.json` + `memory/longterm.db` and any custom agents onto the canonical tree; flags `SKILL.md` and any changed shared agents as `*.local-MERGE` files for you to hand-merge Learned Patterns; and rebuilds `agents/INDEX.md`. It prints exactly what it preserved and what needs a manual merge.
+
+**After it runs:**
+1. Resolve any `*.local-MERGE` files it flagged (port your Learned Patterns into the canonical file, then delete the `.local-MERGE`).
+2. Confirm the store loads against the new code:
+   ```bash
+   cd /tmp/ps-update
+   python3 scripts/memory.py validate   # working memory structure
+   python3 scripts/memory.py doctor      # long-term db integrity
+   ```
+3. Package the merged tree with skill-creator (see `rebuild-protocol.md`). The user clicks **"Copy to your skills"** to replace — you cannot do this programmatically.
+
+The rest of this document explains what the script does under the hood, for transparency or when you need to run a step by hand.
+
+---
+
+## Manual Equivalent (what the script does)
 
 One download gets the entire canonical skill — no per-file fetching, no HTML parsing.
 
@@ -179,30 +210,9 @@ python3 scripts/memory.py doctor      # creates memory/longterm.db (empty schema
 
 ---
 
-## Fallback Method: Per-File Fetch (legacy)
+## Fallback: no releases yet
 
-Use this only if the codeload tarball is unavailable (e.g. `codeload.github.com` blocked in some environment). It fetches files one at a time by scraping the GitHub blob page, because raw hosts are not universally reachable. It is **more fragile** than the tarball (the HTML parser has broken before on GitHub layout changes), so it is the fallback, not the default.
-
-Two scripts in `scripts/` work together:
-- `fetch-github-file.sh` — bash wrapper (curl + output)
-- `github_blob_parser.py` — extracts file content from the blob page's embedded JSON and converts to Markdown
-
-```bash
-# Fetch a single file to stdout
-bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-synapse/SKILL.md
-
-# Fetch and save
-bash scripts/fetch-github-file.sh ProfSynapse/Professor-Synapse main professor-synapse/references/convener-protocol.md /tmp/convener.md
-```
-
-List repo contents to discover files:
-
-```bash
-curl -sL "https://github.com/ProfSynapse/Professor-Synapse/tree/main/professor-synapse/agents" \
-  | grep -o 'professor-synapse/agents/[^"]*\.md' | sort -u
-```
-
-**This fallback cannot fetch the binary `memory/longterm.db`** — let `memory.py` create it (see Memory Store handling).
+If `releases/latest` 404s (the repo has no releases), `update.sh` automatically falls back to the `main` branch tarball — same merge logic, just an unpinned ref. If `codeload.github.com` itself is ever blocked in some environment, run the **Manual Equivalent** steps above by hand against `refs/heads/main`; there is no per-file scraping path anymore.
 
 ---
 
@@ -237,24 +247,19 @@ You prepare and build the merged package; the **user clicks the button** to repl
 
 ## Quick Reference
 
-### Complete Update Workflow (codeload tarball)
+### Complete Update Workflow
 
 ```bash
-# 1. Detect latest version
-curl -sSL -o /dev/null -w '%{url_effective}\n' \
-  https://github.com/ProfSynapse/Professor-Synapse/releases/latest      # parse tag; compare to SKILL.md Version
+# 1. Check, then build the merged tree (preserves memory/ + custom agents, rebuilds INDEX.md)
+bash scripts/update.sh --check
+bash scripts/update.sh                      # output: /tmp/ps-update
 
-# 2. Download + extract canonical (pin to tag; fall back to refs/heads/main)
-curl -sSL -o /tmp/ps.tar.gz \
-  "https://codeload.github.com/ProfSynapse/Professor-Synapse/tar.gz/refs/tags/v1.1.0"
-mkdir -p /tmp/ps-canonical && tar -xzf /tmp/ps.tar.gz -C /tmp/ps-canonical --strip-components=1
+# 2. Resolve any *.local-MERGE files it flagged (port Learned Patterns, then delete them)
 
-# 3. Merge: cp -R canonical -> /tmp/ps-merged, then restore local memory/ + custom agents,
-#    smart-merge SKILL.md Global Learned Patterns and agent Learned Patterns
+# 3. Sanity-check the carried-over store
+cd /tmp/ps-update && python3 scripts/memory.py validate && python3 scripts/memory.py doctor
 
-# 4. Rebuild
-cd /tmp/ps-merged && bash scripts/rebuild-index.sh
-#    then follow rebuild-protocol.md; user clicks "Copy to your skills"
+# 4. Package /tmp/ps-update with skill-creator (rebuild-protocol.md); user clicks "Copy to your skills"
 ```
 
 **Golden rule:** preserve the local `memory/` store and custom agents; never overwrite them with canonical.
@@ -265,6 +270,5 @@ cd /tmp/ps-merged && bash scripts/rebuild-index.sh
 
 ## Dependencies
 
-- `curl`, `tar` (standard on the sandbox)
-- `python3` (for `memory.py` validation and the legacy fallback)
-- The legacy per-file fallback additionally needs the `html2text` Python package (auto-installed if missing): `pip install html2text --break-system-packages`
+- `curl`, `tar`, `bash` (standard on the sandbox) — used by `scripts/update.sh`
+- `python3` (for `memory.py` validation after merge)

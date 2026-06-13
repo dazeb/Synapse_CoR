@@ -102,8 +102,8 @@ Agents should run `--help` first if uncertain about arguments or options.
 | Script | Purpose | Help |
 |--------|---------|------|
 | `scripts/rebuild-index.sh` | Rebuild `agents/INDEX.md` from agent frontmatter | `bash scripts/rebuild-index.sh --help` |
-| `scripts/fetch-github-file.sh` | Fetch files from GitHub (works around blocked raw/API domains) | `bash scripts/fetch-github-file.sh --help` |
-| `scripts/github_blob_parser.py` | Parse GitHub HTML blobs to Markdown | Internal helper — called by `fetch-github-file.sh` |
+| `scripts/update.sh` | Fetch the latest release and build a merged update tree (preserves `memory/` + custom agents) | `bash scripts/update.sh --help` |
+| `scripts/memory.py` | Shared agent-tagged memory store (working + long-term) | `python3 scripts/memory.py --help` |
 
 ## Adding a New Script
 

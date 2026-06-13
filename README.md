@@ -94,8 +94,7 @@ professor-synapse/
     ├── memory.py                 # Shared agent-tagged memory CLI
     ├── test_memory.py            # Memory test suite (stdlib unittest)
     ├── rebuild-index.sh          # Regenerate INDEX.md
-    ├── fetch-github-file.sh      # Fetch files from GitHub (update fallback)
-    └── github_blob_parser.py     # Parse GitHub HTML (update fallback)
+    └── update.sh                 # Fetch latest release + build merged update tree
 ```
 
 ### Recommended: Claude Project Setup
@@ -154,7 +153,7 @@ Then follow these instructions:
 
 + **Ranked-Fusion Recall:** `recall --query` retrieves with SQLite FTS5 (stemming, prefix, column-weighted BM25 — hits in people/tags outrank free text) and re-ranks by fusing relevance, recency, and record kind via Reciprocal Rank Fusion. A `brief` verb gives a one-shot start-of-session prefetch. No external dependencies, no embeddings — it stays fast and portable.
 
-+ **Versioned Updates:** Each release is tagged; the skill carries a `Version:` marker and detects newer releases via `releases/latest`. The update protocol downloads the canonical repo as a single codeload source tarball, then merges it in **while preserving your custom agents, learned patterns, and — critically — your `memory/` store**. A legacy per-file fetch (`fetch-github-file.sh` + `github_blob_parser.py`) remains as a fallback.
++ **Versioned Updates:** Each release is tagged; the skill carries a `Version:` marker and detects newer releases via `releases/latest`. The `scripts/update.sh` helper downloads the canonical repo as a single codeload source tarball, then merges it in **while preserving your custom agents, learned patterns, and — critically — your `memory/` store**, flagging only the files that need a hand-merge.
 
 + **Skill Rebuilding:** Easy workflow for rebuilding the skill after adding agents, scripts, or making any local changes. Uses skill-creator to package updates.
 
