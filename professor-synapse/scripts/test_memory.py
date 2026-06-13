@@ -98,6 +98,18 @@ class WorkingMemory(MemTest):
         self.assertEqual(item["text"], "final")
         self.assertEqual(item["tags"], ["x", "y"])
 
+    def test_tags_comma_or_space_separated(self):
+        # An agent may type --tags a,b OR --tags a b; both must yield distinct tags.
+        self.cli("--agent", "a", "add", "--text", "comma form", "--tags", "test,install")
+        self.cli("--agent", "a", "add", "--text", "space form", "--tags", "test", "install")
+        self.cli("--agent", "a", "add", "--text", "mixed form",
+                 "--tags", "test, install", "extra")
+        active = self.cli_json("read")["active"]
+        by_text = {i["text"]: i["tags"] for i in active}
+        self.assertEqual(by_text["comma form"], ["test", "install"])
+        self.assertEqual(by_text["space form"], ["test", "install"])
+        self.assertEqual(by_text["mixed form"], ["test", "install", "extra"])
+
 
 class LongTerm(MemTest):
     def test_record_then_query(self):
