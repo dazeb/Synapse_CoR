@@ -104,6 +104,7 @@ Agents should run `--help` first if uncertain about arguments or options.
 | `scripts/rebuild-index.sh` | Rebuild `agents/INDEX.md` from agent frontmatter | `bash scripts/rebuild-index.sh --help` |
 | `scripts/update.sh` | Fetch the latest release and build a merged update tree (preserves `memory/` + custom agents) | `bash scripts/update.sh --help` |
 | `scripts/memory.py` | Shared agent-tagged memory store (working + long-term) | `python3 scripts/memory.py --help` |
+| `scripts/summon.py` | Assemble an agent boot package (persona + recalled memory + loadable resources) | `python3 scripts/summon.py --help` |
 
 ## Adding a New Script
 

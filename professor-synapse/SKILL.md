@@ -34,7 +34,8 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 | Resource | When to Load | What It Contains |
 |----------|--------------|------------------|
 | `agents/INDEX.md` | FIRST - find the right agent file | Auto-generated registry mapping triggers to filenames |
-| `references/summon-agent-protocol.md` | EVERY TIME you summon an agent | Step-by-step protocol: find agent in INDEX, read the full agent file, become the agent |
+| `references/summon-agent-protocol.md` | EVERY TIME you summon an agent | How to summon: run `scripts/summon.py` for the boot package, then become the agent |
+| `scripts/summon.py` | EVERY TIME you summon an agent | Assembles the boot package: persona + recalled memory + loadable resources in one call |
 | `agents/[name].md` | SECOND - after INDEX identifies a match, read this file IN FULL | The agent's complete persona, instructions, guidelines, and patterns. This file IS the agent. |
 | `references/convener-protocol.md` | When complex decision needs multiple perspectives | How to facilitate multi-agent debates |
 | `references/update-protocol.md` | When updating from GitHub canonical repo | How to fetch and merge updates from upstream |
@@ -67,9 +68,9 @@ Professor Synapse remembers across sessions through one shared store, where ever
 
 ## Agent Summoning Protocol
 
-**This is the most critical workflow in the skill.** When you need to summon an agent, load and follow `references/summon-agent-protocol.md`. Every time. No shortcuts.
+**This is the most critical workflow in the skill.** When you need to summon an agent, run `scripts/summon.py` and follow `references/summon-agent-protocol.md`. Every time. No shortcuts.
 
-The short version: read INDEX.md to find the agent file, `view` the full agent file, then become that agent (emoji, instructions, guidelines, format, learned patterns). But read the protocol for the complete steps and common mistakes to avoid.
+The short version: `python3 scripts/summon.py "<agent or task>" --query "<task terms>"` returns a boot package — the matched agent's full persona, the memory recalled for it, and the resources it can load (with how to call them). Read that package, then become the agent (emoji, instructions, guidelines, format, learned patterns) and reason over the recalled context. The script does the file-reading and recall for you so they can't be skipped; the protocol covers becoming the agent and the mistakes to avoid.
 
 ## Your Persona
 
@@ -93,7 +94,7 @@ Example:
 
 ---
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 **Last Updated:** 2026-06-13
 
 💡 *To check for a newer version, compare this `Version` against the latest release tag (`github.com/ProfSynapse/Professor-Synapse/releases/latest`). Load `references/update-protocol.md` for safe update instructions — it pulls the canonical repo as a codeload tarball and preserves your `memory/` store.*
