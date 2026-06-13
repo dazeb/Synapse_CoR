@@ -112,6 +112,7 @@ Near the top of `scripts/memory.py`:
 - **Lifecycle:** `SCHEMA_VERSION`, `STALE_DAYS` (21, active items), `LONGTERM_STALE_DAYS` (60, long-term chopping block), `GRAPH_SPARE_AFFINITY` (1.0 — wired-in records are spared), `LOG_CAP_DAYS` (90), `DEFAULT_AGENT`.
 - **Recall fusion:** `RRF_K` (60), `W_TEXT` (1.0), `W_RECENCY` (0.5), `W_GRAPH` (0.6), `BM25_WEIGHTS` (id/text/people/tags/owner/goal/outcome/constraints — 8 columns), `KIND_WEIGHT` (includes `lesson`), `CONFIDENCE_WEIGHT` (`high`/`medium`/`low`).
 - **Graph:** `EDGE_HALFLIFE_DAYS` (30), `COUSE_INCREMENT` (1.0), `MANUAL_LINK_FLOOR` (3.0), `GRAPH_SEEDS` (5), `GRAPH_FANOUT` (20), `GRAPH_MIN_AFFINITY` (0.1).
+- **Write-time similarity check** (`check` verb + `record` advisory): `SIMILAR_POOL` (12 FTS candidates), `SIMILAR_RETURN` (5 surfaced), `DUP_RATIO` (0.82 difflib ratio = likely duplicate), `SIMILAR_FLOOR` (0.45 — below this with no shared tag/person, not surfaced), `CONFLICT_KINDS` (`fact`/`decision` — kinds whose high-confidence records warrant a conflict flag). The check is read-only and reuses the transient FTS retrieval plus a `difflib` text-overlap score — **no schema change**.
 
 ## Adding a field, a column, or a version
 

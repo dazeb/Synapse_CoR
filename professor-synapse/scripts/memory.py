@@ -38,6 +38,7 @@ survive, rebuild the skill per references/rebuild-protocol.md and reinstall it.
 """
 
 import argparse
+import difflib
 import json
 import os
 import re
@@ -85,6 +86,15 @@ W_GRAPH = 0.6               # fusion weight of the graph-affinity ranking (cf. W
 GRAPH_SEEDS = 5             # how many top text hits seed spreading activation
 GRAPH_FANOUT = 20           # cap on neighbours pulled in per query
 GRAPH_MIN_AFFINITY = 0.1    # ignore trivially weak pulled-in neighbours
+
+# Write-time similarity check ("am I about to duplicate/contradict something?").
+# Surfaces existing records resembling a proposed write so the agent can decide
+# whether to just save, or pause and confirm. Advisory only — never blocks a write.
+SIMILAR_POOL = 12           # FTS candidates considered before scoring
+SIMILAR_RETURN = 5          # max similar records surfaced
+DUP_RATIO = 0.82            # difflib text-overlap ratio at/above which it's a likely duplicate
+SIMILAR_FLOOR = 0.45        # below this ratio AND no shared tag/person, too unrelated to surface
+CONFLICT_KINDS = ("fact", "decision")  # kinds whose high-confidence records warrant a contradiction check
 
 
 def utc_now():
@@ -718,9 +728,39 @@ def cmd_record(root, args):
          _check_confidence(args.confidence), now_ts),
     )
     log_event(con, args.agent or DEFAULT_AGENT, args.kind, rid, args.text)
+    # Write-time advisory: flag any near-duplicate or high-confidence conflict so the
+    # agent can consolidate or confirm. Non-blocking — the record is already written.
+    flagged = [s for s in _find_similar(con, args.text, args.kind, args.tags,
+                                        args.people, exclude_id=rid)
+               if s["duplicate"] or s["conflict"]]
     con.commit()
     con.close()
     print(f"recorded {args.kind} {rid} [{args.agent or DEFAULT_AGENT}]: {args.text}")
+    for s in flagged:
+        label = ("possible duplicate" if s["duplicate"]
+                 else f"related high-confidence {s['kind']}")
+        print(f"  ⚠ {label}: {s['id']} ({s['kind']}, {s['confidence'] or 'n/a'})"
+              f" \"{s['text']}\"")
+    if flagged:
+        print("  → before persisting, consolidate a duplicate (link/forget) or"
+              " confirm a conflicting update with the user.")
+
+
+def cmd_check(root, args):
+    """Probe before writing: would this proposed record duplicate or contradict
+    something already stored? Read-only — surfaces similar records and the
+    duplicate/conflict signal so the agent can decide whether to ask first."""
+    con = connect_db(root)
+    sim = _find_similar(con, args.text, args.kind, args.tags, args.people)
+    con.close()
+    print(json.dumps({
+        "proposed": {"kind": args.kind, "text": args.text,
+                     "tags": args.tags or [], "people": args.people or [],
+                     "confidence": args.confidence},
+        "similar": sim,
+        "has_duplicate": any(s["duplicate"] for s in sim),
+        "has_conflict": any(s["conflict"] for s in sim),
+    }, indent=2, ensure_ascii=False))
 
 
 RECALL_COLS = ("id,agent,kind,type,text,people,tags,due,status,"
@@ -841,6 +881,54 @@ def _fetch_records(con, ids):
     rows = con.execute(
         f"SELECT {RECALL_COLS},recorded_at FROM record WHERE id IN ({qs})", ids).fetchall()
     return {r[0]: r for r in rows}
+
+
+def _norm_text(s):
+    return " ".join((s or "").lower().split())
+
+
+def _find_similar(con, text, kind=None, tags=None, people=None,
+                  exclude_id=None, limit=SIMILAR_RETURN):
+    """Read-only: surface existing long-term records resembling a proposed write,
+    so the agent can decide whether to just save or pause and confirm. Retrieves
+    candidates by FTS over text+tags+people (across all agents — memory is shared),
+    then scores text overlap with difflib. Flags each as a likely `duplicate` (high
+    text overlap) and/or a `conflict` (a high-confidence fact/decision on a related
+    subject that a new write might be superseding). Advisory only; never writes."""
+    tags = [t for t in (tags or [])]
+    people = [p for p in (people or [])]
+    terms = [text] + tags + people
+    ranked = _fts_ranked(con, terms, None, SIMILAR_POOL)
+    if ranked is None:  # FTS5 unavailable -> best-effort substring match on the text
+        cand_ids = [h["id"] for h in _like_hits(con, [text], None, SIMILAR_POOL)]
+    else:
+        cand_ids = [i for i, _ in ranked]
+    by_id = _fetch_records(con, cand_ids)
+    nt = _norm_text(text)
+    ptags = {t.lower() for t in tags}
+    ppeople = {p.lower() for p in people}
+    out = []
+    for i in cand_ids:
+        if i == exclude_id or i not in by_id:
+            continue
+        r = by_id[i]
+        if r[8] == "dropped":            # status — retired on purpose, ignore
+            continue
+        ratio = difflib.SequenceMatcher(None, nt, _norm_text(r[4])).ratio()  # r[4]=text
+        shared_tags = sorted(ptags & {t.lower() for t in _json_list(r[6])})
+        shared_people = sorted(ppeople & {p.lower() for p in _json_list(r[5])})
+        if ratio < SIMILAR_FLOOR and not shared_tags and not shared_people:
+            continue                     # too unrelated to be worth surfacing
+        ckind, cconf = r[2], r[12]
+        duplicate = ratio >= DUP_RATIO
+        conflict = (not duplicate and cconf == "high" and ckind in CONFLICT_KINDS
+                    and (bool(shared_tags) or bool(shared_people) or ratio >= 0.5))
+        out.append({"id": i, "agent": r[1], "kind": ckind, "text": r[4],
+                    "confidence": cconf, "shared_tags": shared_tags,
+                    "shared_people": shared_people, "ratio": round(ratio, 2),
+                    "duplicate": duplicate, "conflict": conflict})
+    out.sort(key=lambda h: (h["duplicate"], h["conflict"], h["ratio"]), reverse=True)
+    return out[:limit]
 
 
 def _spreading_affinity(con, seeds, now=None):
@@ -1254,6 +1342,13 @@ def build_parser():
     rec.add_argument("--constraints", nargs="*", help="gotchas/limits (each a quoted phrase)")
     rec.add_argument("--confidence", help="high | medium | low (esp. for facts)")
 
+    ck = sub.add_parser("check", help="probe whether a proposed record duplicates/contradicts an existing one")
+    ck.add_argument("--kind", choices=sorted(RECORD_KINDS), help="kind of the proposed record (sharpens conflict detection)")
+    ck.add_argument("--text", required=True)
+    ck.add_argument("--people", nargs="*")
+    ck.add_argument("--tags", nargs="*")
+    ck.add_argument("--confidence", help="proposed confidence (echoed back; not stored)")
+
     rc = sub.add_parser("recall", help="find long-term items worth surfacing")
     rc.add_argument("--query", nargs="*", help="people or topics to search (ranked FTS5)")
     rc.add_argument("--no-reinforce", dest="no_reinforce", action="store_true",
@@ -1298,7 +1393,7 @@ def build_parser():
 DISPATCH = {
     "read": cmd_read, "profile": cmd_profile, "add": cmd_add, "update": cmd_update,
     "resolve": cmd_resolve, "scan": cmd_scan, "compact": cmd_compact,
-    "resurface": cmd_resurface, "record": cmd_record, "recall": cmd_recall,
+    "resurface": cmd_resurface, "record": cmd_record, "check": cmd_check, "recall": cmd_recall,
     "brief": cmd_brief, "agents": cmd_agents, "validate": cmd_validate, "doctor": cmd_doctor,
     "render": cmd_render, "export": cmd_export,
     "link": cmd_link, "unlink": cmd_unlink, "links": cmd_links,

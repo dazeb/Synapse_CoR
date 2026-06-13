@@ -69,6 +69,30 @@ A `lesson` shines when it carries all four: e.g. `record --kind lesson --text "U
 
 Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later. Short list options accept either form — `--tags a b` or `--tags a,b` both store two distinct tags (constraints are the exception: always quote each phrase).
 
+## When to ask vs. just save
+
+Saving isn't free — it shapes later recall and only persists on rebuild — but asking has a cost too. Route every save with two questions:
+
+1. Did the user *tell* you this, or did you *infer* it?
+2. Does this *destroy, contradict, or expose* something?
+
+That gives three gates:
+
+- **Just save (silent — mention it in passing).** The user asked you to remember, *or* plainly stated a durable fact/decision, *or* it's a working item from the task. Capture and note it ("noted you're at Synaptic Labs").
+- **Save low-confidence + narrate.** You *inferred* it rather than being told, and it's neither sensitive nor destructive. Write it `--confidence low` and say it's a guess. Recall treats low-confidence as re-verify-me, so a wrong guess self-corrects later instead of interrupting now — don't ask.
+- **Ask first.** Destructive (`forget`/`drop`), overwriting/contradicting an existing **high-confidence** record, or **sensitive** (health, finances, third-party personal data). Stop and confirm.
+
+Two things keep this low-friction:
+
+- **`confidence` is the release valve.** When tempted to ask "is this right?", save it `low` instead.
+- **Confirm in a batch at persist, not per item.** Nothing is permanent until the rebuild, so capture freely during work and, at save time, show what's about to persist for pruning. That's one confirmation — and where the ask-first items get their yes/no.
+
+### Checking before you write
+
+`check --kind <k> --text "..." [--tags ...] [--people ...]` is a **read-only probe**: does this resemble something already stored? It returns the most similar records plus two flags — `has_duplicate` (near-identical text) and `has_conflict` (a high-confidence `fact`/`decision` on the same subject you may be superseding). `record` runs the same check automatically and prints a `⚠` advisory when it fires, **without blocking the write** (the record still lands — the store is a draft until rebuild).
+
+Use the signal to route the gates: a **duplicate** → consolidate (`link` the two, or `forget` the older) instead of stacking a near-copy; a **conflict** → that's an ask-first, confirm the update with the user before an existing high-confidence record is contradicted; **no signal** → just save.
+
 ## Linking & the knowledge graph
 
 Memories can be linked into a weighted graph that feeds recall. Edges form two ways:

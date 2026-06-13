@@ -6,6 +6,7 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ## Unreleased
 
+- **Write-time duplicate/contradiction check + a "when to ask vs. just save" policy.** New read-only `check --kind --text [--tags --people]` verb probes whether a proposed record resembles something stored, returning the most similar records plus `has_duplicate` (near-identical text, via a `difflib` overlap ratio ≥ `DUP_RATIO`) and `has_conflict` (a high-confidence `fact`/`decision` on the same subject a write might supersede). `record` runs the same check automatically and prints a non-blocking `⚠` advisory when it fires. `memory-protocol.md` gains a "When to ask vs. just save" section — the two-questions → three-gates model (just-save / save-low-confidence-and-narrate / ask-first), `confidence` as the release valve, and confirm-in-a-batch-at-persist — and the 🧠 Memory Keeper guidelines fold it in. Read-only, transient FTS + difflib, **no schema change**. Seven new tests (51 total).
 - **Committed self-check (`references/self-check.md`).** A repeatable PASS/FAIL verification of an install — version marker, summoning (happy path + ambiguity + no-match exit 3), the memory loop (recall reinforces and reads the real store, `validate`/`doctor` clean, `forget` retires a throwaway probe), and both test suites — replacing the previously ad-hoc test prompt. Includes a ready-to-paste "Prompt for Claude" block. The update- and rebuild-protocols now end by pointing at it, and it's listed in the SKILL.md resource table.
 
 ## v2.1.0 — 2026-06-13
