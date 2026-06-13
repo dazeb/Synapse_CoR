@@ -440,11 +440,11 @@ class Graph(MemTest):
         self.set_edge_updated("2020-01-01T00:00:00+00:00")  # ancient -> decays toward 0
         self.assertLess(self.links_of(a)[b]["weight"], 0.01)
 
-    def test_recall_reinforce_bumps_and_resets_last_used(self):
+    def test_recall_reinforces_by_default(self):
         a = self.rec("acme alpha")
         b = self.rec("acme beta")
         self.set_last_used(a, "2020-01-01T00:00:00+00:00")
-        self.cli("recall", "--query", "acme", "--reinforce")
+        self.cli("recall", "--query", "acme")   # reinforce is the DEFAULT now
         # an edge now exists between the two co-returned records...
         self.assertIn(b, self.links_of(a))
         # ...and the stale clock was reset to today
@@ -452,6 +452,17 @@ class Graph(MemTest):
         lu = con.execute("SELECT last_used FROM record WHERE id=?", (a,)).fetchone()[0]
         con.close()
         self.assertTrue(lu.startswith(memory.utc_today()[:7]), "last_used reset to now")
+
+    def test_recall_no_reinforce_stays_read_only(self):
+        a = self.rec("acme alpha")
+        self.rec("acme beta")
+        self.set_last_used(a, "2020-01-01T00:00:00+00:00")
+        self.cli("recall", "--query", "acme", "--no-reinforce")
+        self.assertEqual(self.links_of(a), {}, "--no-reinforce creates no edges")
+        con = self.db()
+        lu = con.execute("SELECT last_used FROM record WHERE id=?", (a,)).fetchone()[0]
+        con.close()
+        self.assertTrue(lu.startswith("2020-01"), "--no-reinforce leaves last_used untouched")
 
     def test_scan_flags_dormant_unconnected_and_spares_connected(self):
         dormant = self.rec("dormant fact", kind="fact")

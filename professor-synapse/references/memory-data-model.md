@@ -81,7 +81,7 @@ Every active item, long-term record, and changelog row carries an `agent` slug: 
 | `outcome` | TEXT | what resulted (esp. `lesson`) |
 | `constraints` | TEXT (JSON array string) | gotchas/limits; each a phrase |
 | `confidence` | TEXT: `high`/`medium`/`low` | how sure (esp. `fact`) |
-| `last_used` | TEXT (UTC datetime) | last reactivation (recall `--reinforce` / `reinforce` / `link`); resets the staleness clock |
+| `last_used` | TEXT (UTC datetime) | last reactivation (a `recall`/`brief` that surfaces it — reinforce is default — or `reinforce`/`link`); resets the staleness clock |
 
 The `lesson` kind is a reusable how-to learned by doing — it conventionally fills `goal`, `outcome`, and `constraints`, but those fields are optional on every kind. `goal`/`outcome`/`constraints` are full-text indexed for recall; `confidence` and `kind` apply multiplicative nudges in fusion.
 
@@ -104,7 +104,7 @@ The `lesson` kind is a reusable how-to learned by doing — it conventionally fi
 | `source` | TEXT | `manual` (explicit `link`), `corecall` (co-use), or `mixed` |
 | `created_at`, `updated_at` | TEXT (UTC datetime) | `updated_at` anchors the decay |
 
-Edges form two ways: an explicit `link --a --b`, or a co-use event — `reinforce --ids ...` (or `recall/brief --reinforce`) bumps every pair among the records used together ("fire together, wire together"). Each bump first **decays** the existing weight by elapsed time (half-life `EDGE_HALFLIFE_DAYS`) then adds the increment, so stale associations fade and the graph re-clusters. Edges are cross-agent (no `agent` column). They are dropped when either endpoint is `forget`-en or `resurface`-d; `doctor` reports any dangling edge.
+Edges form two ways: an explicit `link --a --b`, or a co-use event — `recall`/`brief --query` reinforce by default (suppress with `--no-reinforce`), and `reinforce --ids ...` is the explicit form; each bumps every pair among the records used together ("fire together, wire together"). Each bump first **decays** the existing weight by elapsed time (half-life `EDGE_HALFLIFE_DAYS`) then adds the increment, so stale associations fade and the graph re-clusters. Edges are cross-agent (no `agent` column). They are dropped when either endpoint is `forget`-en or `resurface`-d; `doctor` reports any dangling edge.
 
 ## Tunable constants
 

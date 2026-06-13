@@ -928,24 +928,30 @@ def _merge_hits(*groups):
     return out
 
 
-def _maybe_reinforce(con, args, hits):
-    """When --reinforce is set, treat a multi-result recall as a co-use event:
-    bump affinity across the returned records and reset their staleness clock."""
-    if not getattr(args, "reinforce", False):
+def _maybe_reinforce(con, args, edge_hits, touch_hits):
+    """Recall reinforces by default (suppress with --no-reinforce): every surfaced
+    record is 'used' so its staleness clock resets, and the topical query matches
+    are co-used so affinity is bumped across every pair. `edge_hits` are wired
+    together; `touch_hits` (usually edge_hits + due items) just get last_used reset."""
+    if getattr(args, "no_reinforce", False):
         return 0
-    ids = [h["id"] for h in hits]
-    if len(ids) < 2:
-        return 0
-    pairs = _reinforce(con, ids, COUSE_INCREMENT, "corecall")
-    con.commit()
+    touch = [h["id"] for h in touch_hits]
+    if touch:
+        _touch_records(con, touch)
+    edge_ids = [h["id"] for h in edge_hits]
+    pairs = _reinforce(con, edge_ids, COUSE_INCREMENT, "corecall") if len(edge_ids) >= 2 else 0
+    if touch or pairs:
+        con.commit()
     return pairs
 
 
 def cmd_recall(root, args):
     con = connect_db(root)
-    hits = _merge_hits(_due_hits(con, args.agent),
-                       _query_hits(con, args.query or [], args.agent))
-    _maybe_reinforce(con, args, hits)
+    due = _due_hits(con, args.agent)
+    qhits = _query_hits(con, args.query or [], args.agent)
+    hits = _merge_hits(due, qhits)
+    # reinforce only the topical query matches; reset last_used on everything surfaced
+    _maybe_reinforce(con, args, edge_hits=qhits, touch_hits=hits)
     con.close()
     print(json.dumps({"candidates": hits}, indent=2, ensure_ascii=False))
 
@@ -961,7 +967,8 @@ def cmd_brief(root, args):
     if args.query:
         seen = {h["id"] for h in due}
         matches = [m for m in _query_hits(con, args.query, args.agent) if m["id"] not in seen]
-    _maybe_reinforce(con, args, due + matches)
+    # wire the topical query matches; reset last_used on everything surfaced
+    _maybe_reinforce(con, args, edge_hits=matches, touch_hits=due + matches)
     con.close()
     out = {"agent": args.agent, "profile": data["profile"], "active": active, "due": due}
     if args.query:
@@ -1249,13 +1256,13 @@ def build_parser():
 
     rc = sub.add_parser("recall", help="find long-term items worth surfacing")
     rc.add_argument("--query", nargs="*", help="people or topics to search (ranked FTS5)")
-    rc.add_argument("--reinforce", action="store_true",
-                    help="treat the returned set as co-used: bump affinity + reset staleness")
+    rc.add_argument("--no-reinforce", dest="no_reinforce", action="store_true",
+                    help="don't wire the returned set or reset its staleness (read-only)")
 
     br = sub.add_parser("brief", help="one-shot prefetch: profile + active + due (+ --query)")
     br.add_argument("--query", nargs="*", help="optional people/topics to also surface from long-term")
-    br.add_argument("--reinforce", action="store_true",
-                    help="treat surfaced long-term records as co-used")
+    br.add_argument("--no-reinforce", dest="no_reinforce", action="store_true",
+                    help="don't wire query matches or reset staleness (read-only)")
 
     lk = sub.add_parser("link", help="assert an explicit edge between two records")
     lk.add_argument("--a", required=True)

@@ -42,9 +42,9 @@ Always fill `--people` and `--tags`; they power recall. Tag with the acting agen
 Memories can be linked into a weighted graph that feeds recall. Edges form two ways:
 
 - **Explicit:** `link --a <id> --b <id> [--weight N]` asserts a relationship (`unlink` removes it; `links --id <id>` lists a record's neighbours by current affinity).
-- **Co-use (Hebbian):** when you actually use several memories together, `reinforce --ids <id> <id> ...` bumps affinity across every pair. Repeated co-use strengthens the link; weights **decay** with time, so the graph keeps re-clustering around what's currently active. You can also pass `--reinforce` to `recall`/`brief` to treat the returned set as co-used in one step.
+- **Co-use (Hebbian):** memories surfaced by the same query are treated as used together. `recall --query` and `brief --query` **reinforce by default** — they bump affinity across every pair of query matches and reset each surfaced record's staleness clock. Pass `--no-reinforce` for a purely read-only/exploratory query. `reinforce --ids <id> <id> ...` is the explicit form when you want to wire a specific set without a query. Repeated co-use strengthens the link; weights **decay** with time, so the graph keeps re-clustering around what's currently active.
 
-At query time, `recall --query` seeds from the top text matches and spreads one hop along strong edges, so a memory wired to what you asked about surfaces even if its own text barely matches (`"why": "linked to a match"`). Reach for `reinforce` when a cluster of memories genuinely worked together — that's what makes the graph smarter over time.
+At query time, `recall --query` seeds from the top text matches and spreads one hop along strong edges, so a memory wired to what you asked about surfaces even if its own text barely matches (`"why": "linked to a match"`). Because recall reinforces by default, the graph gets smarter simply by being used — reach for explicit `reinforce` only to wire a set you didn't reach via a query, and `--no-reinforce` when you're just browsing.
 
 ## Janitor (keep it from going stale)
 
@@ -53,7 +53,7 @@ At query time, `recall --query` seeds from the top text matches and spreads one 
 - Active items: `compact --archive <ids>` or `--drop <ids> --reason "..."`. Resurface a parked item with `resurface --id <id>` (it returns under its original id and agent; its edges are cleared).
 - Long-term records on the chopping block: `forget --ids <ids> [--reason ...]` retires them (marked `dropped`, excluded from recall, edges removed).
 
-**Use it or lose it:** any reactivation — `recall --reinforce`, `reinforce`, or `link` — resets a record's `last_used`, and a strongly-wired record is spared even when dormant. So frequently-used and well-connected memories survive; truly forgotten ones surface for cleanup.
+**Use it or lose it:** any reactivation — a `recall`/`brief` that surfaces it (reinforce is the default), an explicit `reinforce`, or a `link` — resets a record's `last_used`, and a strongly-wired record is spared even when dormant. So frequently-recalled and well-connected memories survive; truly forgotten ones surface for cleanup.
 
 ## Filtering by agent
 
