@@ -602,5 +602,76 @@ class SimilarityCheck(MemTest):
         self.assertEqual(d["similar"], [], "a forgotten record is not a duplicate target")
 
 
+class VerifyLoop(MemTest):
+    """scan surfaces relied-on-but-unverified records; reconfirm closes the loop."""
+
+    def seed(self, text, **kw):
+        argv = ["--agent", "a", "record", "--kind", "fact", "--text", text]
+        for k, v in kw.items():
+            argv += [f"--{k}", v]
+        self.cli(*argv)
+        return self.id_by_text(text)
+
+    def test_scan_flags_unverified_below_high(self):
+        self.seed("low with path", confidence="low", verify="ask the user")
+        self.seed("medium with path", confidence="medium", verify="check the PDF")
+        self.seed("high with path", confidence="high", verify="already done")
+        self.seed("low no path", confidence="low")
+        u = self.cli_json("scan")["unverified"]
+        ids = {x["id"] for x in u}
+        self.assertIn(self.id_by_text("low with path"), ids)
+        self.assertIn(self.id_by_text("medium with path"), ids)
+        self.assertNotIn(self.id_by_text("high with path"), ids, "high confidence isn't unverified")
+        self.assertNotIn(self.id_by_text("low no path"), ids, "no verify path → nothing to do")
+
+    def test_reconfirm_raises_and_appends_source(self):
+        rid = self.seed("founder claim", confidence="low", source="mentioned once",
+                        verify="confirm via HubSpot")
+        self.cli("reconfirm", "--id", rid, "--confidence", "high",
+                 "--source", "confirmed in HubSpot")
+        hit = self.cli_json("recall", "--query", "founder", "--no-reinforce")["candidates"][0]
+        self.assertEqual(hit["confidence"], "high")
+        self.assertEqual(hit["source"], "mentioned once; confirmed in HubSpot")
+        self.assertEqual(hit.get("verify"), "confirm via HubSpot", "verify kept unless cleared")
+
+    def test_reconfirm_clear_verify_removes_from_scan(self):
+        rid = self.seed("x", confidence="low", verify="ask")
+        self.assertIn(rid, {u["id"] for u in self.cli_json("scan")["unverified"]})
+        self.cli("reconfirm", "--id", rid, "--confidence", "high", "--verify", "")
+        self.assertEqual(self.cli_json("scan")["unverified"], [])
+        hit = self.cli_json("recall", "--query", "x", "--no-reinforce")["candidates"][0]
+        self.assertNotIn("verify", hit)
+
+    def test_reconfirm_replace_source(self):
+        rid = self.seed("y", confidence="low", source="old basis", verify="ask")
+        self.cli("reconfirm", "--id", rid, "--source", "new basis", "--replace-source")
+        hit = self.cli_json("recall", "--query", "y", "--no-reinforce")["candidates"][0]
+        self.assertEqual(hit["source"], "new basis")
+
+    def test_reconfirm_can_lower_confidence(self):
+        rid = self.seed("shaky", confidence="high", verify="re-check")
+        self.cli("reconfirm", "--id", rid, "--confidence", "low",
+                 "--source", "disconfirming evidence found")
+        hit = self.cli_json("recall", "--query", "shaky", "--no-reinforce")["candidates"][0]
+        self.assertEqual(hit["confidence"], "low")
+
+    def test_reconfirm_logs_the_change(self):
+        rid = self.seed("z", confidence="low", verify="ask")
+        self.cli("reconfirm", "--id", rid, "--confidence", "medium", "--source", "found a doc")
+        actions = [r for r in self.cli_json("export")["changelog"] if r["action"] == "reconfirm"]
+        self.assertEqual(len(actions), 1)
+        self.assertIn("low→medium", actions[0]["summary"])
+
+    def test_reconfirm_errors(self):
+        rid = self.seed("w", confidence="low", verify="ask")
+        with self.assertRaises(SystemExit):
+            self.cli("reconfirm", "--id", rid)  # nothing to change
+        with self.assertRaises(SystemExit):
+            self.cli("reconfirm", "--id", "m-nope", "--confidence", "high")  # unknown id
+        self.cli("forget", "--ids", rid)
+        with self.assertRaises(SystemExit):
+            self.cli("reconfirm", "--id", rid, "--confidence", "high")  # dropped
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
