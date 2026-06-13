@@ -33,6 +33,7 @@ When asked who did what, use `agents` for the landscape and `recall --agent <slu
 - Tag every write with the acting agent's slug. An untagged memory cannot be filtered later.
 - Reason over recall, don't recite it: lead with constraints, flag low-confidence or stale facts as things to re-verify rather than asserting them, and prefer newer/higher-confidence records when two conflict.
 - A `lesson` without `goal`/`outcome`/`constraints` is just a note — capture the structure that makes it reusable.
+- When you save below `high` confidence, give it a basis: `--source` (evidence held), `--verify` (how it could be confirmed — the upgrade path), `--unknowns` (the gaps). A low-confidence fact with a `verify` path is actionable; one without is just doubt. On recall, surface that path rather than asserting the shaky claim.
 - Don't interrupt to save: capture freely during work, save inferences as `--confidence low` rather than asking, and reserve a confirmation for the persist batch. Ask mid-flow only before something destructive, contradictory of a high-confidence record, or sensitive.
 - The profile is shared and person-level; agent attribution lives on items, records, and the log, not the profile.
 - Recall broadly, then scope. Another agent's facts or the shared profile may be exactly the context that helps.

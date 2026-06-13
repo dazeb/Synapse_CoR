@@ -70,10 +70,12 @@ RRF_K = 60                       # Reciprocal Rank Fusion damping; larger = flat
 W_TEXT = 1.0                     # weight of the BM25 relevance ranking
 W_RECENCY = 0.5                  # weight of the recency ranking (secondary signal)
 # BM25 per-column weights, in FTS index column order
-# (id, text, people, tags, owner, goal, outcome, constraints).
+# (id, text, people, tags, owner, goal, outcome, constraints, source, verify, unknowns).
 # people/tags/constraints outrank free text: an exact tag/person/gotcha hit is a
 # stronger signal. goal/outcome are weighted above plain text but below the lists.
-BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0, 2.0, 1.5, 3.0)
+# source/verify/unknowns (the confidence basis) are searchable but weighted modestly;
+# verify a touch higher so "how do I confirm X" finds the upgrade path.
+BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0, 2.0, 1.5, 3.0, 1.0, 1.5, 1.0)
 KIND_WEIGHT = {"fact": 1.3, "lesson": 1.25, "decision": 1.2, "note": 1.0, "item": 1.0}
 
 # Knowledge-graph (co-recall affinity) tuning. Edges are undirected, weighted links
@@ -321,6 +323,8 @@ CREATE TABLE IF NOT EXISTS record (
     outcome     TEXT,
     constraints TEXT,
     confidence  TEXT,
+    verify      TEXT,
+    unknowns    TEXT,
     last_used   TEXT
 );
 """
@@ -349,7 +353,8 @@ CREATE TABLE IF NOT EXISTS changelog (
 # Columns in RECORD_DDL order — single source of truth for full-row copies.
 RECORD_COLUMNS = ("id", "agent", "kind", "type", "text", "people", "tags", "owner",
                   "due", "status", "source", "created_at", "recorded_at", "reason",
-                  "rationale", "goal", "outcome", "constraints", "confidence", "last_used")
+                  "rationale", "goal", "outcome", "constraints", "confidence",
+                  "verify", "unknowns", "last_used")
 
 
 def _migrate_record_schema(con):
@@ -361,7 +366,7 @@ def _migrate_record_schema(con):
     if not row:
         return
     cols = {r[1] for r in con.execute("PRAGMA table_info(record)")}
-    for c in ("goal", "outcome", "constraints", "confidence", "last_used"):
+    for c in ("goal", "outcome", "constraints", "confidence", "verify", "unknowns", "last_used"):
         if c not in cols:
             con.execute(f"ALTER TABLE record ADD COLUMN {c} TEXT")
     if "kind IN ('item','decision','note','fact')" in (row[0] or ""):
@@ -542,6 +547,8 @@ def cmd_add(root, args):
         "outcome": args.outcome,
         "constraints": args.constraints or [],
         "confidence": _check_confidence(args.confidence),
+        "verify": args.verify,
+        "unknowns": args.unknowns,
         "created_at": utc_today(),
         "updated_at": utc_today(),
     }
@@ -554,7 +561,7 @@ def cmd_update(root, args):
     data = load_working(root)
     item = _find(data, args.id)
     for field in ("text", "owner", "due", "source", "status", "type", "agent",
-                  "goal", "outcome"):
+                  "goal", "outcome", "verify", "unknowns"):
         val = getattr(args, field)
         if val is not None:
             item[field] = val
@@ -668,14 +675,15 @@ def _to_record(data, con, item_id, status, reason):
     con.execute(
         "INSERT OR REPLACE INTO record"
         "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
-        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,last_used)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,verify,unknowns,last_used)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (item["id"], item.get("agent"), "item", item.get("type"), item.get("text"),
          json.dumps(item.get("people") or []), json.dumps(item.get("tags") or []),
          item.get("owner"), item.get("due"), final_status, item.get("source"),
          item.get("created_at"), now_ts, reason, None,
          item.get("goal"), item.get("outcome"),
-         json.dumps(item.get("constraints") or []), item.get("confidence"), now_ts),
+         json.dumps(item.get("constraints") or []), item.get("confidence"),
+         item.get("verify"), item.get("unknowns"), now_ts),
     )
     log_event(con, item.get("agent"), "drop" if status == "dropped" else "archive",
               item["id"], f"{item.get('type')}: {item.get('text')}")
@@ -687,7 +695,7 @@ def cmd_resurface(root, args):
     con = connect_db(root)
     row = con.execute(
         "SELECT id,agent,type,text,people,tags,owner,due,source,created_at,"
-        "goal,outcome,constraints,confidence FROM record "
+        "goal,outcome,constraints,confidence,verify,unknowns FROM record "
         "WHERE id=? AND kind='item'", (args.id,)).fetchone()
     if row is None:
         con.close()
@@ -698,6 +706,7 @@ def cmd_resurface(root, args):
         "owner": row[6], "due": row[7], "status": "open", "source": row[8],
         "goal": row[10], "outcome": row[11],
         "constraints": _json_list(row[12]), "confidence": row[13],
+        "verify": row[14], "unknowns": row[15],
         "created_at": row[9] or utc_today(), "updated_at": utc_today(),
     }
     con.execute("DELETE FROM record WHERE id=?", (args.id,))
@@ -719,13 +728,13 @@ def cmd_record(root, args):
     con.execute(
         "INSERT INTO record"
         "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
-        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,last_used)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,verify,unknowns,last_used)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (rid, args.agent or DEFAULT_AGENT, args.kind, args.type, args.text,
          json.dumps(args.people or []), json.dumps(args.tags or []),
          None, None, "done", args.source, utc_today(), now_ts, None, args.rationale,
          args.goal, args.outcome, json.dumps(args.constraints or []),
-         _check_confidence(args.confidence), now_ts),
+         _check_confidence(args.confidence), args.verify, args.unknowns, now_ts),
     )
     log_event(con, args.agent or DEFAULT_AGENT, args.kind, rid, args.text)
     # Write-time advisory: flag any near-duplicate or high-confidence conflict so the
@@ -764,7 +773,7 @@ def cmd_check(root, args):
 
 
 RECALL_COLS = ("id,agent,kind,type,text,people,tags,due,status,"
-               "goal,outcome,constraints,confidence")
+               "goal,outcome,constraints,confidence,source,verify,unknowns")
 
 
 def _row_to_hit(r, why):
@@ -781,6 +790,15 @@ def _row_to_hit(r, why):
         hit["constraints"] = constraints
     if confidence:
         hit["confidence"] = confidence
+    # Confidence basis (the why behind the level): evidence held = source,
+    # the upgrade path = verify, the gaps = unknowns. Surface when present.
+    source, verify, unknowns = r[13], r[14], r[15]
+    if source:
+        hit["source"] = source
+    if verify:
+        hit["verify"] = verify
+    if unknowns:
+        hit["unknowns"] = unknowns
     return hit
 
 
@@ -817,19 +835,22 @@ def _fts_ranked(con, terms, agent, pool):
         con.execute("DROP TABLE IF EXISTS recall_fts")
         con.execute("CREATE VIRTUAL TABLE temp.recall_fts USING fts5("
                     "id UNINDEXED, text, people, tags, owner, goal, outcome, constraints, "
+                    "source, verify, unknowns, "
                     "tokenize='porter unicode61')")
     except sqlite3.OperationalError:
         return None  # FTS5 not compiled in
     clause = " WHERE agent = ?" if agent else ""
     a = (agent,) if agent else ()
     rows = con.execute(
-        f"SELECT id,text,people,tags,owner,goal,outcome,constraints FROM record{clause}",
-        a).fetchall()
+        "SELECT id,text,people,tags,owner,goal,outcome,constraints,source,verify,unknowns "
+        f"FROM record{clause}", a).fetchall()
     con.executemany(
-        "INSERT INTO recall_fts(id,text,people,tags,owner,goal,outcome,constraints) "
-        "VALUES(?,?,?,?,?,?,?,?)",
+        "INSERT INTO recall_fts"
+        "(id,text,people,tags,owner,goal,outcome,constraints,source,verify,unknowns) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         [(r[0], r[1] or "", " ".join(_json_list(r[2])), " ".join(_json_list(r[3])),
-          r[4] or "", r[5] or "", r[6] or "", " ".join(_json_list(r[7])))
+          r[4] or "", r[5] or "", r[6] or "", " ".join(_json_list(r[7])),
+          r[8] or "", r[9] or "", r[10] or "")
          for r in rows])
     weights = ", ".join(str(w) for w in BM25_WEIGHTS)
     try:
@@ -987,7 +1008,7 @@ def _query_hits(con, terms, agent, limit=10):
     # genuinely break ties. Graph-only candidates get the worst text rank.
     worst_bm = max(bm25.values()) + 1.0
     text_pos = _competition_rank(cand, key=lambda i: bm25.get(i, worst_bm))
-    rec_pos = _competition_rank(cand, key=lambda i: by_id[i][13] or "", reverse=True)
+    rec_pos = _competition_rank(cand, key=lambda i: by_id[i][16] or "", reverse=True)  # [16] = recorded_at
     graph_pos = _competition_rank(cand, key=lambda i: affinity.get(i, 0.0), reverse=True)
 
     def score(i):
@@ -1298,6 +1319,8 @@ def build_parser():
     a.add_argument("--outcome", help="what resulted / current state")
     a.add_argument("--constraints", nargs="*", help="gotchas/limits (each one a quoted phrase)")
     a.add_argument("--confidence", help="high | medium | low")
+    a.add_argument("--verify", help="confidence basis: what evidence is available and how to get it (the upgrade path)")
+    a.add_argument("--unknowns", help="confidence basis: what remains unknown / unknown-unknown")
 
     u = sub.add_parser("update", help="update fields on an active item")
     u.add_argument("--id", required=True)
@@ -1314,6 +1337,8 @@ def build_parser():
     u.add_argument("--outcome")
     u.add_argument("--constraints", nargs="*", help="replaces the gotcha list")
     u.add_argument("--confidence", help="high | medium | low")
+    u.add_argument("--verify", help="confidence basis: available evidence + how to get it")
+    u.add_argument("--unknowns", help="confidence basis: what remains unknown")
 
     r = sub.add_parser("resolve", help="mark an active item done")
     r.add_argument("--id", required=True)
@@ -1336,11 +1361,13 @@ def build_parser():
     rec.add_argument("--type")
     rec.add_argument("--people", nargs="*")
     rec.add_argument("--tags", nargs="*")
-    rec.add_argument("--source")
+    rec.add_argument("--source", help="confidence basis: evidence held / where the claim comes from")
     rec.add_argument("--goal", help="what was being attempted (esp. for lessons)")
     rec.add_argument("--outcome", help="what resulted (esp. for lessons)")
     rec.add_argument("--constraints", nargs="*", help="gotchas/limits (each a quoted phrase)")
     rec.add_argument("--confidence", help="high | medium | low (esp. for facts)")
+    rec.add_argument("--verify", help="confidence basis: available evidence + how to get it (the upgrade path)")
+    rec.add_argument("--unknowns", help="confidence basis: what remains unknown / unknown-unknown")
 
     ck = sub.add_parser("check", help="probe whether a proposed record duplicates/contradicts an existing one")
     ck.add_argument("--kind", choices=sorted(RECORD_KINDS), help="kind of the proposed record (sharpens conflict detection)")

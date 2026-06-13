@@ -343,6 +343,43 @@ class RichBody(MemTest):
         self.assertEqual(item["constraints"], ["needs review"])
         self.assertEqual(item["confidence"], "medium")
 
+    def test_confidence_basis_surfaces_in_recall(self):
+        self.cli("--agent", "a", "record", "--kind", "fact",
+                 "--text", "User is founder of Synaptic Labs", "--tags", "employer",
+                 "--confidence", "low", "--source", "mentioned once",
+                 "--verify", "confirm via the HubSpot contact record",
+                 "--unknowns", "whether the title is still current")
+        hit = self.cli_json("recall", "--query", "synaptic", "--no-reinforce")["candidates"][0]
+        self.assertEqual(hit["confidence"], "low")
+        self.assertEqual(hit["source"], "mentioned once")
+        self.assertEqual(hit["verify"], "confirm via the HubSpot contact record")
+        self.assertEqual(hit["unknowns"], "whether the title is still current")
+
+    def test_verify_text_is_searchable(self):
+        # The upgrade path lives only in --verify; a query on its words must find the record.
+        self.cli("--agent", "a", "record", "--kind", "fact", "--text", "User is founder of X",
+                 "--verify", "confirm via the HubSpot contact record")
+        hits = self.cli_json("recall", "--query", "hubspot contact", "--no-reinforce")["candidates"]
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0]["text"], "User is founder of X")
+
+    def test_basis_omitted_keys_absent(self):
+        self.cli("--agent", "a", "record", "--kind", "note", "--text", "plain note")
+        hit = self.cli_json("recall", "--query", "plain", "--no-reinforce")["candidates"][0]
+        self.assertNotIn("verify", hit)
+        self.assertNotIn("unknowns", hit)
+        self.assertNotIn("source", hit)
+
+    def test_basis_on_active_item_survives_archive_resurface(self):
+        self.cli("--agent", "a", "add", "--text", "verify the SSO claim",
+                 "--confidence", "low", "--verify", "ask IT", "--unknowns", "which IdP")
+        iid = self.cli_json("read")["active"][0]["id"]
+        self.cli("compact", "--archive", iid)
+        self.cli("resurface", "--id", iid)
+        item = self.cli_json("read")["active"][0]
+        self.assertEqual(item["verify"], "ask IT")
+        self.assertEqual(item["unknowns"], "which IdP")
+
     def test_migration_from_old_schema_preserves_data_and_allows_lesson(self):
         # Build a db with the pre-2.1 schema: restrictive kind CHECK, no new columns.
         db = os.path.join(self.root, "memory", "longterm.db")
