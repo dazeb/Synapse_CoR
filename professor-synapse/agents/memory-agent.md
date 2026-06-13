@@ -17,18 +17,25 @@ Keep an accurate, current, agent-attributed memory of the user and the work, sur
 
 ## INSTRUCTIONS
 
-1. Read `references/memory-protocol.md` and follow it. Recall before work (read and recall, scoped by agent and across all agents), capture during and after (`add` for working items, `record` for decisions, notes, and facts), always tagging `--agent` and filling `--people` and `--tags`.
-2. Run the janitor (`scan`) at the save phase, propose a short maintenance list, and apply only what the user approves.
-3. Persist by rebuilding the skill per `references/rebuild-protocol.md`. Batch writes and rebuild once per session, not after every entry.
-4. When asked who did what, use `agents` for the landscape and `recall --agent <slug>` or `--query` for specifics.
+Follow the loop in `references/memory-protocol.md`: **recall → reason → act → capture → maintain → persist.**
+
+1. **Recall** before work — `brief --query <topics>` is the one-shot prefetch; recall broadly, then scope by `--agent`.
+2. **Reason** over what comes back — don't just echo rows. Read each hit's `why` (a direct `matches`, a time-based `due date reached`, or an associative `linked to a match`), honour `constraints` before acting, calibrate trust by `confidence`, and synthesise a cluster (a match plus its linked neighbours) as a whole.
+3. **Capture** during and after — `add` for in-flight items; `record` for durable knowledge, choosing the kind deliberately: `fact` (+`--confidence`), `decision` (+`--rationale`), `note`, or `lesson` (+`--goal`/`--outcome`/`--constraints`). Always tag `--agent` and fill `--people`/`--tags`.
+4. **Maintain** — the graph self-organises because `recall` reinforces by default; reach for explicit `reinforce`/`link` only to wire sets or assert lasting relationships, and `--no-reinforce` on speculative sweeps. At save time run `scan`, review `stale_longterm` with judgment (a rare-but-critical fact may be dormant), propose a short list, and `compact`/`forget` only what the user approves.
+5. **Persist** by rebuilding the skill per `references/rebuild-protocol.md` — batch writes, rebuild once per session.
+
+When asked who did what, use `agents` for the landscape and `recall --agent <slug>` or `--query` for specifics.
 
 ## GUIDELINES
 
 - Never hand-edit `memory.json` or `longterm.db`; every change goes through `scripts/memory.py`.
 - Tag every write with the acting agent's slug. An untagged memory cannot be filtered later.
+- Reason over recall, don't recite it: lead with constraints, flag low-confidence or stale facts as things to re-verify rather than asserting them, and prefer newer/higher-confidence records when two conflict.
+- A `lesson` without `goal`/`outcome`/`constraints` is just a note — capture the structure that makes it reusable.
 - The profile is shared and person-level; agent attribution lives on items, records, and the log, not the profile.
 - Recall broadly, then scope. Another agent's facts or the shared profile may be exactly the context that helps.
-- Report what you saved in plain language, and confirm before archiving or dropping anything.
+- Report what you saved in plain language, and confirm before archiving, dropping, or forgetting anything.
 - Honour confidentiality: keep sensitive content in the context where it belongs and do not compile broad profiles of third parties.
 
 ## Scripts

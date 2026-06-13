@@ -11,6 +11,10 @@ Two files under `memory/`:
 
 Every active item, long-term record, and log entry carries an `agent` field. Always pass `--agent <slug>` for the agent currently acting, using the agent's `name` from its frontmatter (for example `--agent chief-of-staff`). Professor Synapse's own slug is `professor-synapse`.
 
+## The rhythm
+
+Memory is a loop, not a lookup: **recall → reason → act → capture → maintain → persist.** Pull context before you work, *reason* over what comes back (don't just echo it), do the work, capture what's new and durable, run the janitor at save time, and rebuild once to persist. The sections below are that loop in order.
+
 ## Recall (start of work)
 
 **Fast path:** `python3 scripts/memory.py --agent <slug> brief` is the one-shot prefetch — it returns the shared profile, the agent's active items, and any long-term items now due in a single call. Add `--query <terms>` once you know the people and topics in play and it folds ranked keyword matches in too. Start here; reach for the individual verbs below when you want a narrower view.
@@ -21,10 +25,38 @@ If you'd rather surface things step by step:
 2. `python3 scripts/memory.py --agent <slug> recall` for long-term items whose due date has arrived.
 3. Once you know the people and topics in play, `python3 scripts/memory.py recall --query <terms>` (add `--agent <slug>` to scope to one agent, omit it to search across all agents). `--query` is ranked full-text search (SQLite FTS5: stemming + prefix matching, best matches first), so terms like `renew` also surface `renewal`/`renewals`. The shared profile and other agents' facts can be relevant, so search broadly, then scope when you want one agent's view.
 
+## Reading recall results (reason, don't just dump)
+
+A recall hit is evidence to reason over, not a row to read aloud. Each carries a `why` that tells you *how* it surfaced — weigh it accordingly:
+
+- **`matches <terms>`** — the record's own `text`/`tags`/`goal`/`constraints` matched your query. Direct, keyword-level relevance.
+- **`due date reached`** — surfaced by time, not topic. It's a reminder, not necessarily related to what you asked.
+- **`linked to a match`** — it did **not** match your query; it surfaced because it's wired (co-recalled before) to something that did. Treat it as **associative context** — "you'll probably also want this" — not as a keyword answer. This is often the most useful signal: it's how the graph hands you the rest of a cluster.
+
+Read the whole record, not just `text`:
+
+- **`constraints`** are gotchas to honour *before* you act — surface them proactively ("note: the API needs the featured image uploaded first").
+- **`goal`/`outcome`** on a `lesson` tell you what it was for and whether it worked — reuse the approach, but check the constraints still hold before repeating it.
+- **`confidence`** calibrates trust. Lean on `high`; treat `low` (especially if old) as a hypothesis to re-verify, and say so rather than asserting it.
+- **`kind`** frames the record: a `decision` comes with a `rationale`; a `fact` is a durable truth; a `lesson` is a how-to to reuse; a `note` is background.
+
+**Synthesize across hits.** When a direct match arrives with its `linked to a match` neighbours, that's a topic cluster — reason over it as a whole, lead with the constraints, and reconcile any conflicts (a newer or higher-confidence record beats an older or lower one; if they genuinely disagree, say so). Recall is associative + keyword search, not ground truth — don't over-trust a lone low-confidence or stale hit.
+
 ## Capture (during and after work)
 
-- Working items: `add --agent <slug> --text "..." [--type ...] [--people ...] [--tags ...] [--due ...]`.
-- Things born straight into long-term: `record --agent <slug> --kind decision|note|fact|lesson --text "..." [--rationale ...] [--people ...] [--tags ...]`. Use `fact` for durable things learned about the user, `decision` for choices with a rationale, `note` for context, and `lesson` for a reusable how-to learned by doing.
+- Working items: `add --agent <slug> --text "..." [--type ...] [--people ...] [--tags ...] [--due ...]`. Use these for things in flight — tasks, follow-ups, anything with a `--due`.
+- Things born straight into long-term: `record --agent <slug> --kind decision|note|fact|lesson --text "..."`.
+
+**Pick the kind by asking what it is:**
+
+| If it's… | use | and add |
+|---|---|---|
+| a durable truth about the user/world | `fact` | `--confidence`, and `--source` if it could go stale |
+| a choice you made | `decision` | `--rationale` (why), so future-you doesn't relitigate it |
+| background context worth keeping | `note` | just `--people`/`--tags` |
+| a reusable how-to you figured out by doing | `lesson` | `--goal` + `--outcome` + `--constraints` |
+
+Capture a `lesson` the moment a task succeeds — or fails (put the failure in `--outcome` and the trap in `--constraints`). A lesson without its goal/outcome/constraints is just a note; the structure is what makes it reusable.
 
 ### Richer body (optional on any item or record)
 
@@ -44,7 +76,13 @@ Memories can be linked into a weighted graph that feeds recall. Edges form two w
 - **Explicit:** `link --a <id> --b <id> [--weight N]` asserts a relationship (`unlink` removes it; `links --id <id>` lists a record's neighbours by current affinity).
 - **Co-use (Hebbian):** memories surfaced by the same query are treated as used together. `recall --query` and `brief --query` **reinforce by default** — they bump affinity across every pair of query matches and reset each surfaced record's staleness clock. Pass `--no-reinforce` for a purely read-only/exploratory query. `reinforce --ids <id> <id> ...` is the explicit form when you want to wire a specific set without a query. Repeated co-use strengthens the link; weights **decay** with time, so the graph keeps re-clustering around what's currently active.
 
-At query time, `recall --query` seeds from the top text matches and spreads one hop along strong edges, so a memory wired to what you asked about surfaces even if its own text barely matches (`"why": "linked to a match"`). Because recall reinforces by default, the graph gets smarter simply by being used — reach for explicit `reinforce` only to wire a set you didn't reach via a query, and `--no-reinforce` when you're just browsing.
+At query time, `recall --query` seeds from the top text matches and spreads one hop along strong edges, so a memory wired to what you asked about surfaces even if its own text barely matches (`"why": "linked to a match"`). Because recall reinforces by default, the graph gets smarter simply by being used.
+
+**In practice:**
+- You rarely call `reinforce` by hand — just recalling things together wires them. Use explicit `reinforce --ids` only when you used a set you assembled *without* a single query (e.g. records you pulled across several searches and then acted on together).
+- Use `link` for a deliberate, lasting relationship you want to assert regardless of co-use — e.g. a `lesson` ↔ the `decision` that motivated it. It's stronger and more intentional than incidental co-recall.
+- Use `--no-reinforce` on broad/speculative sweeps so you don't wire together things that merely share a keyword.
+- `links --id <id>` shows a record's neighbourhood — a quick way to expand context: "what tends to come up with this?"
 
 ## Janitor (keep it from going stale)
 
