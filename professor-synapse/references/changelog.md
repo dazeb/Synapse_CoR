@@ -4,7 +4,7 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
-## Unreleased
+## v2.3.0 — 2026-06-13
 
 - **The verify loop is now actionable: `scan` surfaces unverified records, `reconfirm` closes them.** `scan` returns a new **`unverified`** bucket — below-`high` records that carry a `verify` path (a known way to firm them up), sorted by reliance (most recently used / best-connected first), so the shaky things the work keeps leaning on float to the top. New **`reconfirm --id [--confidence] [--source] [--verify] [--replace-source]`** verb closes the loop: it folds the new evidence into `source` (appended to the existing trail by default, or replaced), adjusts `confidence` **up or down** (disconfirming evidence is valid), clears or rewrites the `verify` path (`--verify ""` once walked), resets the staleness clock, and logs a `reconfirm low→high (…)` event. So a low-confidence guess no longer stays a guess forever — `scan` shows what's worth confirming, you check it, and `reconfirm` promotes or demotes it with the evidence attached. Protocol ("Closing the verify loop") and Memory Keeper guidance updated. Seven new tests (62 total).
 
