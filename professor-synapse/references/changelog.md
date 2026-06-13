@@ -4,6 +4,12 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## Unreleased
+
+- **`scripts/update.sh`**: Updates are now a single script, not a hand-run sequence. It detects the latest release tag (`releases/latest`), downloads the canonical codeload tarball, overlays your local `memory/` store and custom agents, flags `SKILL.md`/changed shared agents as `*.local-MERGE` for hand-merging, and rebuilds `INDEX.md`. Supports `--check`, `--ref`, `--out`, `--force`. It prepares the merged tree but does not install — you still package and click "Copy to your skills".
+- **Removed the legacy HTML blob scrapers** (`scripts/fetch-github-file.sh`, `scripts/github_blob_parser.py`). With the codeload tarball as the update mechanism there is no per-file scraping path; the `html2text` dependency is gone. If a release ever has no tag, `update.sh` falls back to the `main` branch tarball automatically.
+- **Docs**: `update-protocol.md` leads with `scripts/update.sh` (manual codeload steps kept as the under-the-hood reference); `scripts-protocol.md` catalog and `README.md` updated to match.
+
 ## v1.1.0 — 2026-06-13
 
 - **Memory system release.** SKILL.md now carries a `**Version:**` marker for precise update detection against the latest release tag.
