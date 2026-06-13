@@ -52,7 +52,7 @@ One download gets the entire canonical skill — no per-file fetching, no HTML p
 ```bash
 curl -sSL -o /dev/null -w '%{url_effective}\n' \
   https://github.com/ProfSynapse/Professor-Synapse/releases/latest
-# -> https://github.com/ProfSynapse/Professor-Synapse/releases/tag/v1.0.0   (parse the tag)
+# -> https://github.com/ProfSynapse/Professor-Synapse/releases/tag/v1.1.0   (parse the tag)
 ```
 
 Compare that tag to the local `**Version:**` line in `SKILL.md`. If they match, the skill is current — tell the user and stop. If `releases/latest` 404s (no releases yet), fall back to the `main` branch.
@@ -62,7 +62,7 @@ Compare that tag to the local `**Version:**` line in `SKILL.md`. If they match, 
 Pin to the release tag for a reproducible snapshot; fall back to `main` when there is no release:
 
 ```bash
-TAG=v1.0.0   # from Step 1; or use refs/heads/main as a fallback
+TAG=v1.1.0   # from Step 1; or use refs/heads/main as a fallback
 REF="refs/tags/$TAG"   # fallback: REF="refs/heads/main"
 
 curl -sSL -o /tmp/ps.tar.gz \
@@ -246,7 +246,7 @@ curl -sSL -o /dev/null -w '%{url_effective}\n' \
 
 # 2. Download + extract canonical (pin to tag; fall back to refs/heads/main)
 curl -sSL -o /tmp/ps.tar.gz \
-  "https://codeload.github.com/ProfSynapse/Professor-Synapse/tar.gz/refs/tags/v1.0.0"
+  "https://codeload.github.com/ProfSynapse/Professor-Synapse/tar.gz/refs/tags/v1.1.0"
 mkdir -p /tmp/ps-canonical && tar -xzf /tmp/ps.tar.gz -C /tmp/ps-canonical --strip-components=1
 
 # 3. Merge: cp -R canonical -> /tmp/ps-merged, then restore local memory/ + custom agents,

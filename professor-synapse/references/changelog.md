@@ -4,9 +4,9 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
-## v1.0.0 — 2026-06-13
+## v1.1.0 — 2026-06-13
 
-- **First tagged release.** SKILL.md now carries a `**Version:**` marker for precise update detection against the latest release tag.
+- **Memory system release.** SKILL.md now carries a `**Version:**` marker for precise update detection against the latest release tag.
 - **Update protocol rewritten around codeload**: updates now download the canonical repo as a single `codeload.github.com` source tarball (pinned to the release tag, falling back to `main`), extract, merge, and rebuild — replacing the fragile per-file HTML blob-scraping, which is demoted to a legacy fallback. Host reachability was verified in the sandbox: `codeload.github.com` works; release **assets** (`objects`/`release-assets.githubusercontent.com`) are proxy-blocked, so release-asset downloads are not used. `releases/latest` (on `github.com`) drives version detection. The "Reachable Hosts" table documents the proxy-vs-real-host `x-deny-reason` distinction.
 
 ## 2026-06-13
