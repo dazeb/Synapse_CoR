@@ -81,6 +81,7 @@ Every active item, long-term record, and changelog row carries an `agent` slug: 
 | `outcome` | TEXT | what resulted (esp. `lesson`) |
 | `constraints` | TEXT (JSON array string) | gotchas/limits; each a phrase |
 | `confidence` | TEXT: `high`/`medium`/`low` | how sure (esp. `fact`) |
+| `last_used` | TEXT (UTC datetime) | last reactivation (recall `--reinforce` / `reinforce` / `link`); resets the staleness clock |
 
 The `lesson` kind is a reusable how-to learned by doing — it conventionally fills `goal`, `outcome`, and `constraints`, but those fields are optional on every kind. `goal`/`outcome`/`constraints` are full-text indexed for recall; `confidence` and `kind` apply multiplicative nudges in fusion.
 
@@ -90,13 +91,27 @@ The `lesson` kind is a reusable how-to learned by doing — it conventionally fi
 | `seq` | INTEGER PK AUTOINCREMENT | |
 | `ts` | TEXT (UTC datetime) | |
 | `agent` | TEXT | who acted |
-| `action` | TEXT | `archive`, `drop`, `resurface`, `decision`, `note`, `fact` |
+| `action` | TEXT | `archive`, `drop`, `resurface`, `decision`, `note`, `fact`, `lesson` |
 | `item_id` | TEXT | |
 | `summary` | TEXT | |
 
+### edge (knowledge graph — undirected weighted link between two records)
+| column | type | notes |
+|---|---|---|
+| `a`, `b` | TEXT | record ids, stored canonically `a <= b` (PK), so one row per undirected pair |
+| `weight` | REAL | accumulated affinity; **read through time-decay** (`_decay`), never raw |
+| `count` | INTEGER | how many co-use / link events have hit this edge |
+| `source` | TEXT | `manual` (explicit `link`), `corecall` (co-use), or `mixed` |
+| `created_at`, `updated_at` | TEXT (UTC datetime) | `updated_at` anchors the decay |
+
+Edges form two ways: an explicit `link --a --b`, or a co-use event — `reinforce --ids ...` (or `recall/brief --reinforce`) bumps every pair among the records used together ("fire together, wire together"). Each bump first **decays** the existing weight by elapsed time (half-life `EDGE_HALFLIFE_DAYS`) then adds the increment, so stale associations fade and the graph re-clusters. Edges are cross-agent (no `agent` column). They are dropped when either endpoint is `forget`-en or `resurface`-d; `doctor` reports any dangling edge.
+
 ## Tunable constants
 
-Near the top of `scripts/memory.py`: `SCHEMA_VERSION`, `STALE_DAYS` (21), `LOG_CAP_DAYS` (90), `DEFAULT_AGENT`, and the recall-fusion knobs `RRF_K` (60), `W_TEXT` (1.0), `W_RECENCY` (0.5), `BM25_WEIGHTS` (id/text/people/tags/owner/goal/outcome/constraints — 8 columns), `KIND_WEIGHT` (includes `lesson`), and `CONFIDENCE_WEIGHT` (`high`/`medium`/`low` multipliers).
+Near the top of `scripts/memory.py`:
+- **Lifecycle:** `SCHEMA_VERSION`, `STALE_DAYS` (21, active items), `LONGTERM_STALE_DAYS` (60, long-term chopping block), `GRAPH_SPARE_AFFINITY` (1.0 — wired-in records are spared), `LOG_CAP_DAYS` (90), `DEFAULT_AGENT`.
+- **Recall fusion:** `RRF_K` (60), `W_TEXT` (1.0), `W_RECENCY` (0.5), `W_GRAPH` (0.6), `BM25_WEIGHTS` (id/text/people/tags/owner/goal/outcome/constraints — 8 columns), `KIND_WEIGHT` (includes `lesson`), `CONFIDENCE_WEIGHT` (`high`/`medium`/`low`).
+- **Graph:** `EDGE_HALFLIFE_DAYS` (30), `COUSE_INCREMENT` (1.0), `MANUAL_LINK_FLOOR` (3.0), `GRAPH_SEEDS` (5), `GRAPH_FANOUT` (20), `GRAPH_MIN_AFFINITY` (0.1).
 
 ## Adding a field, a column, or a version
 
@@ -110,7 +125,8 @@ Near the top of `scripts/memory.py`: `SCHEMA_VERSION`, `STALE_DAYS` (21), `LOG_C
 `recall --query` and `brief --query` are a two-stage ranker:
 
 1. **Retrieve** with **SQLite FTS5** (stemming + prefix matching). The index is **built transiently at query time** from the `record` table and dropped immediately — no persistent FTS table, no triggers, **no schema change or migration**. Retrieval uses **column-weighted BM25** (`BM25_WEIGHTS`) over `text/people/tags/owner/goal/outcome/constraints` so a hit in `people`/`tags`/`constraints` outranks one buried in free text, and `goal`/`outcome` rank above plain text. It pulls a candidate pool (≈3× the result limit).
-2. **Re-rank** the pool by **fusing signals** with Reciprocal Rank Fusion (RRF): the BM25 relevance order (`W_TEXT`) and the recency order by `recorded_at` (`W_RECENCY`, a secondary nudge so a strongly-relevant old fact still wins), then multiplicative nudges — `KIND_WEIGHT` so `fact`/`lesson`/`decision` edge out `note`, and `CONFIDENCE_WEIGHT` so a `high`-confidence record edges out a `low` one. `dropped` records are excluded — they were retired on purpose.
+2. **Spread** through the knowledge graph: the top `GRAPH_SEEDS` text hits seed one-hop spreading activation over `edge` (decayed weights), pulling in strongly-linked records — so a memory wired to what you asked about surfaces *even on a weak text match*. The seed hubs earn their own connection weight too, so a well-connected match isn't out-ranked by its neighbours.
+3. **Re-rank** by **fusing three ranked lists** with Reciprocal Rank Fusion (RRF): BM25 relevance (`W_TEXT`), recency by `recorded_at` (`W_RECENCY`), and graph affinity (`W_GRAPH`). Graph-only candidates get the worst text rank but can still surface on the graph term. Then multiplicative nudges — `KIND_WEIGHT` so `fact`/`lesson`/`decision` edge out `note`, and `CONFIDENCE_WEIGHT` so a `high`-confidence record edges out a `low` one. `dropped` records are excluded — they were retired on purpose. With no edges, the graph term is constant and ranking is identical to text+recency alone.
 
 RRF is scale-free, so the disparate signals combine without normalizing raw scores. At this store's scale (tens to low hundreds of records) the whole thing is instant and needs zero maintenance. If a SQLite build lacks FTS5, `recall` falls back to substring `LIKE`, so it is never worse than before.
 
