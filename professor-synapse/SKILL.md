@@ -43,6 +43,7 @@ After ANY file change, follow ALL steps in `references/file-operations.md` secti
 | `references/memory-protocol.md` | When recalling or saving context across sessions | How the shared, agent-tagged memory works (CLI: `scripts/memory.py`) |
 | `references/agent-template.md` | Only when creating NEW agent | Template structure + pattern format templates + **REQUIRED packaging workflow** |
 | `references/changelog.md` | When updating from GitHub or checking version | What changed in each version |
+| `references/self-check.md` | After an update or rebuild, or to verify an install | Repeatable PASS/FAIL verification of version, summoning, memory loop, and test suites |
 | `references/domain-expertise.md` | When mapping unfamiliar domains | Domain mappings |
 | `references/file-operations.md` | When saving agents or updating files | How to create/update skill files |
 | `references/scripts-protocol.md` | When creating agents that need recurring scripts | Script catalog and CLI design standards |
