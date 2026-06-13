@@ -51,11 +51,13 @@ Every active item, long-term record, and changelog row carries an `agent` slug: 
 | `owner` | string or null | |
 | `due` | date `YYYY-MM-DD` or null | |
 | `status` | enum: `open`, `done` | |
-| `source` | string or null | |
+| `source` | string or null | confidence basis: evidence held / where the claim comes from |
 | `goal` | string or null | what the item is in service of |
 | `outcome` | string or null | what resulted / current state |
 | `constraints` | list of strings | gotchas/limits; each is a phrase (not comma-split), powers recall |
 | `confidence` | enum or null: `high`, `medium`, `low` | how sure; nudges recall fusion |
+| `verify` | string or null | confidence basis: available evidence + how to get it (the upgrade path) |
+| `unknowns` | string or null | confidence basis: what remains unknown / unknown-unknown |
 | `created_at`, `updated_at` | date `YYYY-MM-DD` | |
 
 ## longterm.db
@@ -72,7 +74,7 @@ Every active item, long-term record, and changelog row carries an `agent` slug: 
 | `owner` | TEXT | |
 | `due` | TEXT (date) | |
 | `status` | TEXT, in (`open`,`done`,`deferred`,`dropped`) | (still a DB CHECK) |
-| `source` | TEXT | |
+| `source` | TEXT | confidence basis: evidence held / where the claim comes from |
 | `created_at` | TEXT (date) | |
 | `recorded_at` | TEXT (UTC datetime) | when it entered long-term |
 | `reason` | TEXT | why archived/dropped |
@@ -81,9 +83,11 @@ Every active item, long-term record, and changelog row carries an `agent` slug: 
 | `outcome` | TEXT | what resulted (esp. `lesson`) |
 | `constraints` | TEXT (JSON array string) | gotchas/limits; each a phrase |
 | `confidence` | TEXT: `high`/`medium`/`low` | how sure (esp. `fact`) |
+| `verify` | TEXT | confidence basis: available evidence + how to get it (the upgrade path) |
+| `unknowns` | TEXT | confidence basis: what remains unknown / unknown-unknown |
 | `last_used` | TEXT (UTC datetime) | last reactivation (a `recall`/`brief` that surfaces it — reinforce is default — or `reinforce`/`link`); resets the staleness clock |
 
-The `lesson` kind is a reusable how-to learned by doing — it conventionally fills `goal`, `outcome`, and `constraints`, but those fields are optional on every kind. `goal`/`outcome`/`constraints` are full-text indexed for recall; `confidence` and `kind` apply multiplicative nudges in fusion.
+The `lesson` kind is a reusable how-to learned by doing — it conventionally fills `goal`, `outcome`, and `constraints`, but those fields are optional on every kind. `goal`/`outcome`/`constraints` are full-text indexed for recall; `confidence` and `kind` apply multiplicative nudges in fusion. **Confidence carries its basis**: `source` (evidence held), `verify` (the upgrade path — what evidence is available and how to get it), and `unknowns` (gaps). All three are full-text indexed, so a query like "how to confirm X" surfaces the `verify` path; they are explanatory (surfaced in recall) and don't themselves change ranking.
 
 ### changelog (append-only audit)
 | column | type | notes |
@@ -110,7 +114,7 @@ Edges form two ways: an explicit `link --a --b`, or a co-use event — `recall`/
 
 Near the top of `scripts/memory.py`:
 - **Lifecycle:** `SCHEMA_VERSION`, `STALE_DAYS` (21, active items), `LONGTERM_STALE_DAYS` (60, long-term chopping block), `GRAPH_SPARE_AFFINITY` (1.0 — wired-in records are spared), `LOG_CAP_DAYS` (90), `DEFAULT_AGENT`.
-- **Recall fusion:** `RRF_K` (60), `W_TEXT` (1.0), `W_RECENCY` (0.5), `W_GRAPH` (0.6), `BM25_WEIGHTS` (id/text/people/tags/owner/goal/outcome/constraints — 8 columns), `KIND_WEIGHT` (includes `lesson`), `CONFIDENCE_WEIGHT` (`high`/`medium`/`low`).
+- **Recall fusion:** `RRF_K` (60), `W_TEXT` (1.0), `W_RECENCY` (0.5), `W_GRAPH` (0.6), `BM25_WEIGHTS` (id/text/people/tags/owner/goal/outcome/constraints/source/verify/unknowns — 11 columns), `KIND_WEIGHT` (includes `lesson`), `CONFIDENCE_WEIGHT` (`high`/`medium`/`low`).
 - **Graph:** `EDGE_HALFLIFE_DAYS` (30), `COUSE_INCREMENT` (1.0), `MANUAL_LINK_FLOOR` (3.0), `GRAPH_SEEDS` (5), `GRAPH_FANOUT` (20), `GRAPH_MIN_AFFINITY` (0.1).
 - **Write-time similarity check** (`check` verb + `record` advisory): `SIMILAR_POOL` (12 FTS candidates), `SIMILAR_RETURN` (5 surfaced), `DUP_RATIO` (0.82 difflib ratio = likely duplicate), `SIMILAR_FLOOR` (0.45 — below this with no shared tag/person, not surfaced), `CONFLICT_KINDS` (`fact`/`decision` — kinds whose high-confidence records warrant a conflict flag). The check is read-only and reuses the transient FTS retrieval plus a `difflib` text-overlap score — **no schema change**.
 
@@ -125,7 +129,7 @@ Near the top of `scripts/memory.py`:
 
 `recall --query` and `brief --query` are a two-stage ranker:
 
-1. **Retrieve** with **SQLite FTS5** (stemming + prefix matching). The index is **built transiently at query time** from the `record` table and dropped immediately — no persistent FTS table, no triggers, **no schema change or migration**. Retrieval uses **column-weighted BM25** (`BM25_WEIGHTS`) over `text/people/tags/owner/goal/outcome/constraints` so a hit in `people`/`tags`/`constraints` outranks one buried in free text, and `goal`/`outcome` rank above plain text. It pulls a candidate pool (≈3× the result limit).
+1. **Retrieve** with **SQLite FTS5** (stemming + prefix matching). The index is **built transiently at query time** from the `record` table and dropped immediately — no persistent FTS table, no triggers, **no schema change or migration**. Retrieval uses **column-weighted BM25** (`BM25_WEIGHTS`) over `text/people/tags/owner/goal/outcome/constraints/source/verify/unknowns` so a hit in `people`/`tags`/`constraints` outranks one buried in free text, `goal`/`outcome` rank above plain text, and the confidence-basis fields (`source`/`verify`/`unknowns`) are searchable but weighted modestly (`verify` a touch higher, so "how do I confirm X" finds the upgrade path). It pulls a candidate pool (≈3× the result limit).
 2. **Spread** through the knowledge graph: the top `GRAPH_SEEDS` text hits seed one-hop spreading activation over `edge` (decayed weights), pulling in strongly-linked records — so a memory wired to what you asked about surfaces *even on a weak text match*. The seed hubs earn their own connection weight too, so a well-connected match isn't out-ranked by its neighbours.
 3. **Re-rank** by **fusing three ranked lists** with Reciprocal Rank Fusion (RRF): BM25 relevance (`W_TEXT`), recency by `recorded_at` (`W_RECENCY`), and graph affinity (`W_GRAPH`). Graph-only candidates get the worst text rank but can still surface on the graph term. Then multiplicative nudges — `KIND_WEIGHT` so `fact`/`lesson`/`decision` edge out `note`, and `CONFIDENCE_WEIGHT` so a `high`-confidence record edges out a `low` one. `dropped` records are excluded — they were retired on purpose. With no edges, the graph term is constant and ranking is identical to text+recency alone.
 

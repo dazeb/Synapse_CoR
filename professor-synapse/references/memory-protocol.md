@@ -37,7 +37,7 @@ Read the whole record, not just `text`:
 
 - **`constraints`** are gotchas to honour *before* you act — surface them proactively ("note: the API needs the featured image uploaded first").
 - **`goal`/`outcome`** on a `lesson` tell you what it was for and whether it worked — reuse the approach, but check the constraints still hold before repeating it.
-- **`confidence`** calibrates trust. Lean on `high`; treat `low` (especially if old) as a hypothesis to re-verify, and say so rather than asserting it.
+- **`confidence`** calibrates trust. Lean on `high`; treat `low` (especially if old) as a hypothesis to re-verify, and say so rather than asserting it. Its *basis* travels with it: **`source`** is the evidence held (where the belief comes from), **`verify`** is the upgrade path (what evidence is available and how to get it), and **`unknowns`** are the gaps. On a shaky hit, surface the path proactively — "I believe X (low confidence — only mentioned once; I can confirm via the HubSpot record; unknown whether it's still current)" — and offer to run down `verify` when it matters.
 - **`kind`** frames the record: a `decision` comes with a `rationale`; a `fact` is a durable truth; a `lesson` is a how-to to reuse; a `note` is background.
 
 **Synthesize across hits.** When a direct match arrives with its `linked to a match` neighbours, that's a topic cluster — reason over it as a whole, lead with the constraints, and reconcile any conflicts (a newer or higher-confidence record beats an older or lower one; if they genuinely disagree, say so). Recall is associative + keyword search, not ground truth — don't over-trust a lone low-confidence or stale hit.
@@ -64,6 +64,11 @@ Capture a `lesson` the moment a task succeeds — or fails (put the failure in `
 - `--outcome "..."` — what resulted / the current state.
 - `--constraints "gotcha one" "gotcha two"` — limits and gotchas. Each is a **quoted phrase** (a constraint may itself contain a comma), not a comma-list.
 - `--confidence high|medium|low` — how sure you are; nudges recall ranking. Best on `fact`s that might decay.
+- **Confidence basis** — *why* it's at that level, so future-you (and the user) can trust or upgrade it:
+  - `--source "..."` — the **evidence held** (where the claim comes from: "user stated directly", "observed across 3 sessions", "inferred from the invoice").
+  - `--verify "..."` — the **upgrade path**: what evidence is available and how to get it ("confirm via the HubSpot contact record", "ask the user", "check the signed contract"). This is what turns a `low` into a `high` when it matters.
+  - `--unknowns "..."` — what's genuinely **unknown or unknown-unknown** (can't currently be determined). Honest about the ceiling.
+  - All three are full-text searchable, so a later `recall --query "how to confirm employer"` surfaces the `verify` path directly. Reach for them whenever you save something below `high` — the basis is what makes a low-confidence record *actionable* instead of just doubtful.
 
 A `lesson` shines when it carries all four: e.g. `record --kind lesson --text "Upload a blog to HubSpot" --goal "publish a draft via API" --outcome "POST /cms/v3/blogs/posts works" --constraints "upload featured image first" "publish_date is epoch ms" --confidence high`. `goal`, `outcome`, and `constraints` are all full-text searchable, so a later `recall --query "hubspot epoch"` surfaces the gotcha directly.
 
@@ -79,7 +84,7 @@ Saving isn't free — it shapes later recall and only persists on rebuild — bu
 That gives three gates:
 
 - **Just save (silent — mention it in passing).** The user asked you to remember, *or* plainly stated a durable fact/decision, *or* it's a working item from the task. Capture and note it ("noted you're at Synaptic Labs").
-- **Save low-confidence + narrate.** You *inferred* it rather than being told, and it's neither sensitive nor destructive. Write it `--confidence low` and say it's a guess. Recall treats low-confidence as re-verify-me, so a wrong guess self-corrects later instead of interrupting now — don't ask.
+- **Save low-confidence + narrate.** You *inferred* it rather than being told, and it's neither sensitive nor destructive. Write it `--confidence low` and say it's a guess. Add the basis — `--source` (what you inferred it from) and especially `--verify` (how it could be confirmed) — so the guess carries its own upgrade path. Recall treats low-confidence as re-verify-me, so a wrong guess self-corrects later instead of interrupting now — don't ask.
 - **Ask first.** Destructive (`forget`/`drop`), overwriting/contradicting an existing **high-confidence** record, or **sensitive** (health, finances, third-party personal data). Stop and confirm.
 
 Two things keep this low-friction:
