@@ -90,9 +90,51 @@ Different files have different update rules:
 | **System Core** | `SKILL.md`, `scripts/*` | Show diff, recommend applying updates. SKILL.md contains Global Learned Patterns — smart merge to preserve user's patterns |
 | **Reference Protocols** | `references/*.md` | Show diff, offer to apply |
 | **Template** | `references/agent-template.md` | Show diff, usually safe to update |
-| **User Content** | `agents/*` (except domain-researcher) | NEVER overwrite - user's custom agents |
-| **System Agent** | `agents/domain-researcher.md` | Show diff, offer to update |
+| **User Content** | `agents/*` (except domain-researcher, memory-agent) | NEVER overwrite - user's custom agents |
+| **System Agent** | `agents/domain-researcher.md`, `agents/memory-agent.md` | Show diff, offer to update |
 | **Auto-generated** | `agents/INDEX.md` | Don't update directly - regenerated from agents |
+| **Memory Store** | `memory/memory.json`, `memory/longterm.db` | User DATA - NEVER overwrite an existing store. See "Memory Store: Special Handling" below |
+
+---
+
+## Memory Store: Special Handling
+
+The memory architecture (added 2026-06) lives in a `memory/` directory and is wired through `scripts/memory.py`. An update touches the *code and protocols* of memory, **never the data**. Treat `memory/` exactly like a user's custom agents: it holds what Professor Synapse has remembered, and it must survive the update intact.
+
+**The memory feature is made of two different kinds of file:**
+
+| Part | Files | On update |
+|------|-------|-----------|
+| **Code & protocols** | `scripts/memory.py`, `references/memory-protocol.md`, `references/memory-data-model.md`, `agents/memory-agent.md` | Fetch from canonical, show diff, apply (same as any system file) |
+| **The store (user data)** | `memory/memory.json`, `memory/longterm.db` | **Preserve the local copy byte-for-byte. Never overwrite with canonical.** |
+
+### Updating an install that already has memory
+
+1. Update the **code & protocol** files normally (fetch, diff, apply).
+2. **Carry the user's existing `memory/` directory into the merged build unchanged** — copy their `memory.json` and `longterm.db` across; do not fetch or merge the canonical ones. The canonical store is an empty seed and would wipe the user's memory.
+3. After the new `scripts/memory.py` is in place, confirm the store still loads against the new code:
+   ```bash
+   python3 scripts/memory.py validate   # working memory structure
+   python3 scripts/memory.py doctor      # long-term db integrity
+   ```
+   If a release bumped the schema, migration runs automatically on the next load (see `references/memory-data-model.md`). Writes back up to `memory.json.bak` and replace atomically, so a version mismatch fails loud rather than corrupting data — it never silently mangles the store.
+
+### First-time setup (install had no memory before)
+
+Older installs predate the `memory/` directory. For them the update *introduces* memory:
+
+1. Add the code & protocol files (`scripts/memory.py`, the two `references/memory-*.md`, `agents/memory-agent.md`) and register `memory-agent` by running `bash scripts/rebuild-index.sh`.
+2. **Do not try to fetch the store files.** `longterm.db` is a **binary SQLite file** — the GitHub fetch pipeline (`fetch-github-file.sh` → `github_blob_parser.py`) only handles text/markdown and cannot retrieve it. And you don't want the canonical's seed data anyway.
+3. Let the script create an empty store itself. A single read materialises both files with the correct schema:
+   ```bash
+   python3 scripts/memory.py read       # creates memory/memory.json (clean seed)
+   python3 scripts/memory.py doctor      # creates memory/longterm.db (empty schema)
+   ```
+   The shipped `memory/memory.json` seed (`updated_at: null`, empty profile, empty `active`) is equivalent and may be copied instead — but the binary `longterm.db` is always created by `memory.py`, never fetched.
+
+### Why this matters
+
+`memory/` is the one place in the skill where the user's data accumulates. Blindly overwriting it with the canonical copy is the single most destructive mistake this protocol exists to prevent. When in doubt: **keep the local `memory/`, update everything around it.**
 
 ---
 
@@ -155,6 +197,7 @@ Create a temporary directory with the merged skill content:
 
 2. **Preserve user customizations**
    - Keep user's custom agents (not in canonical)
+   - **Carry the user's `memory/` store across untouched** (`memory.json` + `longterm.db`) — never overwrite with canonical (see "Memory Store: Special Handling")
    - Merge SKILL.md's Global Learned Patterns (user patterns + new system patterns)
    - Merge agent-level Learned Patterns sections in agent files
    - Note any user modifications to system files
@@ -164,6 +207,7 @@ Create a temporary directory with the merged skill content:
    - **MODIFIED system files**: Use canonical version (show user what changed)
    - **SKILL.md**: Smart merge — preserve user's Global Learned Patterns, apply structural changes
    - **Agent files**: Preserve user's Learned Patterns entries when updating agent structure
+   - **Memory store**: Always preserve the local `memory/` data; update only the memory code/protocols around it
    - **USER files**: Always preserve
 
 **Example merge:**
@@ -296,11 +340,14 @@ bash scripts/fetch-github-file.sh USER/REPO BRANCH path/to/file.md /output/path.
 1. Fetch canonical files to /tmp/canonical-synapse/
 2. Check references/changelog.md for what changed
 3. Copy user's custom agents to /tmp/canonical-synapse/agents/
-4. Merge SKILL.md Global Learned Patterns (user + canonical)
-5. cd /tmp/canonical-synapse && bash scripts/rebuild-index.sh
-6. Use skill-creator on /tmp/canonical-synapse/
-7. Instruct user to click "Copy to your skills" to replace
+4. Copy user's memory/ store across UNCHANGED (memory.json + longterm.db) — never the canonical seed
+5. Merge SKILL.md Global Learned Patterns (user + canonical)
+6. cd /tmp/canonical-synapse && bash scripts/rebuild-index.sh
+7. Use skill-creator on /tmp/canonical-synapse/
+8. Instruct user to click "Copy to your skills" to replace
 ```
+
+If the install had no `memory/` before, don't fetch the store — run `python3 scripts/memory.py read && python3 scripts/memory.py doctor` once to materialise an empty `memory.json` + `longterm.db` (the binary db is never fetched). See "Memory Store: Special Handling".
 
 ### Adding New Agent/Script (Also Requires Rebuild)
 
