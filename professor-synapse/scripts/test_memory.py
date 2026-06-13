@@ -369,5 +369,122 @@ class RichBody(MemTest):
         self.assertEqual(kinds, {"fact", "lesson"})
 
 
+class Graph(MemTest):
+    """Co-recall affinity edges, spreading activation, decay, and chopping-block."""
+
+    def rec(self, text, kind="note", agent="a"):
+        self.cli("--agent", agent, "record", "--kind", kind, "--text", text)
+        return self.id_by_text(text)
+
+    def set_edge_updated(self, ts):
+        con = self.db()
+        con.execute("UPDATE edge SET updated_at=?", (ts,))
+        con.commit()
+        con.close()
+
+    def set_last_used(self, rid, ts):
+        con = self.db()
+        con.execute("UPDATE record SET last_used=? WHERE id=?", (ts, rid))
+        con.commit()
+        con.close()
+
+    def links_of(self, rid):
+        return {l["id"]: l for l in self.cli_json("links", "--id", rid)["links"]}
+
+    def test_reinforce_builds_weighted_edges(self):
+        a, b, g = self.rec("alpha"), self.rec("beta"), self.rec("gamma")
+        self.cli("reinforce", "--ids", a, b, g)   # a-b, a-g, b-g each +1
+        self.cli("reinforce", "--ids", a, g)       # a-g +1 more
+        la = self.links_of(a)
+        self.assertGreater(la[g]["weight"], la[b]["weight"], "a-g co-used more than a-b")
+        self.assertEqual(la[g]["count"], 2)
+        self.assertEqual(la[b]["count"], 1)
+
+    def test_reinforce_requires_two_ids(self):
+        a = self.rec("solo")
+        with self.assertRaises(SystemExit):
+            self.cli("reinforce", "--ids", a)
+
+    def test_spreading_activation_pulls_linked_neighbor(self):
+        seed = self.rec("alpha apple")        # only this matches 'apple'
+        neigh = self.rec("gamma grape")
+        self.cli("link", "--a", seed, "--b", neigh)
+        hits = self.cli_json("recall", "--query", "apple")["candidates"]
+        ids = [h["id"] for h in hits]
+        self.assertEqual(ids[0], seed, "the direct text match (hub) leads")
+        self.assertIn(neigh, ids, "a linked neighbour surfaces on a query it doesn't match")
+        whys = {h["id"]: h["why"] for h in hits}
+        self.assertEqual(whys[neigh], "linked to a match")
+
+    def test_no_edges_means_recall_unchanged(self):
+        self.rec("alpha apple")
+        self.rec("beta banana")
+        hits = self.cli_json("recall", "--query", "apple")["candidates"]
+        self.assertEqual([h["text"] for h in hits], ["alpha apple"])
+
+    def test_manual_link_and_unlink(self):
+        a, b = self.rec("one"), self.rec("two")
+        self.cli("link", "--a", a, "--b", b, "--weight", "4")
+        self.assertEqual(self.links_of(a)[b]["weight"], 4.0)
+        self.cli("unlink", "--a", a, "--b", b)
+        self.assertEqual(self.links_of(a), {})
+
+    def test_link_rejects_unknown_ids(self):
+        a = self.rec("real")
+        with self.assertRaises(SystemExit):
+            self.cli("link", "--a", a, "--b", "m-deadbeef")
+
+    def test_edge_weight_decays_over_time(self):
+        a, b = self.rec("one"), self.rec("two")
+        self.cli("link", "--a", a, "--b", b, "--weight", "4")
+        self.set_edge_updated("2020-01-01T00:00:00+00:00")  # ancient -> decays toward 0
+        self.assertLess(self.links_of(a)[b]["weight"], 0.01)
+
+    def test_recall_reinforce_bumps_and_resets_last_used(self):
+        a = self.rec("acme alpha")
+        b = self.rec("acme beta")
+        self.set_last_used(a, "2020-01-01T00:00:00+00:00")
+        self.cli("recall", "--query", "acme", "--reinforce")
+        # an edge now exists between the two co-returned records...
+        self.assertIn(b, self.links_of(a))
+        # ...and the stale clock was reset to today
+        con = self.db()
+        lu = con.execute("SELECT last_used FROM record WHERE id=?", (a,)).fetchone()[0]
+        con.close()
+        self.assertTrue(lu.startswith(memory.utc_today()[:7]), "last_used reset to now")
+
+    def test_scan_flags_dormant_unconnected_and_spares_connected(self):
+        dormant = self.rec("dormant fact", kind="fact")
+        anchor = self.rec("anchor fact", kind="fact")
+        self.set_last_used(dormant, "2020-01-01T00:00:00+00:00")
+        flagged = [x["id"] for x in self.cli_json("scan")["stale_longterm"]]
+        self.assertIn(dormant, flagged)
+        # wire it into a live cluster, re-age it -> spared
+        self.cli("link", "--a", dormant, "--b", anchor)
+        self.set_last_used(dormant, "2020-01-01T00:00:00+00:00")
+        flagged = [x["id"] for x in self.cli_json("scan")["stale_longterm"]]
+        self.assertNotIn(dormant, flagged, "a well-connected record is spared the chopping block")
+
+    def test_forget_retires_record_and_drops_edges(self):
+        a, b = self.rec("forget me"), self.rec("keep me")
+        self.cli("link", "--a", a, "--b", b)
+        self.cli("forget", "--ids", a)
+        self.assertEqual(self.cli_json("recall", "--query", "forget")["candidates"], [],
+                         "forgotten record is excluded from recall")
+        self.assertEqual(self.links_of(b), {}, "edges to a forgotten record are dropped")
+        doc = self.cli_json("doctor")
+        self.assertEqual(doc["invariant_issues"], [])
+
+    def test_resurface_clears_edges(self):
+        self.cli("--agent", "a", "add", "--text", "archive me")
+        iid = self.cli_json("read")["active"][0]["id"]
+        other = self.rec("neighbor")
+        self.cli("compact", "--archive", iid)
+        self.cli("link", "--a", iid, "--b", other)
+        self.cli("resurface", "--id", iid)
+        self.assertEqual(self.links_of(other), {}, "resurfacing clears the record's edges")
+        self.assertEqual(self.cli_json("doctor")["invariant_issues"], [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

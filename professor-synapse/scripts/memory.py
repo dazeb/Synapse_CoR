@@ -58,6 +58,8 @@ CONFIDENCE_LEVELS = {"high", "medium", "low"}
 # Optional fusion nudge by confidence (applied multiplicatively when present).
 CONFIDENCE_WEIGHT = {"high": 1.15, "medium": 1.0, "low": 0.85}
 STALE_DAYS = 21
+LONGTERM_STALE_DAYS = 60     # a long-term record unused this long is a chopping-block candidate
+GRAPH_SPARE_AFFINITY = 1.0   # ...unless it's this wired-in (part of a live cluster) — then spared
 LOG_CAP_DAYS = 90
 SCHEMA_VERSION = 1
 DEFAULT_AGENT = "unknown"
@@ -72,6 +74,17 @@ W_RECENCY = 0.5                  # weight of the recency ranking (secondary sign
 # stronger signal. goal/outcome are weighted above plain text but below the lists.
 BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0, 2.0, 1.5, 3.0)
 KIND_WEIGHT = {"fact": 1.3, "lesson": 1.25, "decision": 1.2, "note": 1.0, "item": 1.0}
+
+# Knowledge-graph (co-recall affinity) tuning. Edges are undirected, weighted links
+# between records; weight grows with co-use and decays with time ("fire together,
+# wire together" + forgetting), then feeds recall via spreading activation.
+EDGE_HALFLIFE_DAYS = 30.0   # a decayed edge weight halves every N days since its last bump
+COUSE_INCREMENT = 1.0       # affinity added per co-use / reinforce event
+MANUAL_LINK_FLOOR = 3.0     # an explicit `link` is worth at least this much
+W_GRAPH = 0.6               # fusion weight of the graph-affinity ranking (cf. W_TEXT/W_RECENCY)
+GRAPH_SEEDS = 5             # how many top text hits seed spreading activation
+GRAPH_FANOUT = 20           # cap on neighbours pulled in per query
+GRAPH_MIN_AFFINITY = 0.1    # ignore trivially weak pulled-in neighbours
 
 
 def utc_now():
@@ -297,7 +310,20 @@ CREATE TABLE IF NOT EXISTS record (
     goal        TEXT,
     outcome     TEXT,
     constraints TEXT,
-    confidence  TEXT
+    confidence  TEXT,
+    last_used   TEXT
+);
+"""
+EDGE_DDL = """
+CREATE TABLE IF NOT EXISTS edge (
+    a          TEXT NOT NULL,
+    b          TEXT NOT NULL,
+    weight     REAL NOT NULL DEFAULT 0,
+    count      INTEGER NOT NULL DEFAULT 0,
+    source     TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    PRIMARY KEY (a, b)
 );
 """
 CHANGELOG_DDL = """
@@ -313,7 +339,7 @@ CREATE TABLE IF NOT EXISTS changelog (
 # Columns in RECORD_DDL order — single source of truth for full-row copies.
 RECORD_COLUMNS = ("id", "agent", "kind", "type", "text", "people", "tags", "owner",
                   "due", "status", "source", "created_at", "recorded_at", "reason",
-                  "rationale", "goal", "outcome", "constraints", "confidence")
+                  "rationale", "goal", "outcome", "constraints", "confidence", "last_used")
 
 
 def _migrate_record_schema(con):
@@ -325,7 +351,7 @@ def _migrate_record_schema(con):
     if not row:
         return
     cols = {r[1] for r in con.execute("PRAGMA table_info(record)")}
-    for c in ("goal", "outcome", "constraints", "confidence"):
+    for c in ("goal", "outcome", "constraints", "confidence", "last_used"):
         if c not in cols:
             con.execute(f"ALTER TABLE record ADD COLUMN {c} TEXT")
     if "kind IN ('item','decision','note','fact')" in (row[0] or ""):
@@ -341,10 +367,89 @@ def _migrate_record_schema(con):
 def connect_db(root):
     _ensure_dir(root)
     con = sqlite3.connect(str(db_path(root)))
-    con.executescript(RECORD_DDL + CHANGELOG_DDL)
+    con.executescript(RECORD_DDL + CHANGELOG_DDL + EDGE_DDL)
     _migrate_record_schema(con)
     con.commit()
     return con
+
+
+# --------------------------------------------------------------------------
+# Knowledge graph: undirected weighted edges with time decay
+# --------------------------------------------------------------------------
+
+def _edge_key(i, j):
+    """Canonical (a, b) with a <= b so an undirected edge has one row."""
+    return (i, j) if i <= j else (j, i)
+
+
+def _decay(weight, updated_at, now=None):
+    """Edge weight as of `now`, halving every EDGE_HALFLIFE_DAYS since last bump."""
+    if not weight or not updated_at or not _is_iso(updated_at):
+        return float(weight or 0.0)
+    now = now or datetime.now(timezone.utc)
+    elapsed = (now - datetime.fromisoformat(updated_at)).total_seconds() / 86400.0
+    if elapsed <= 0:
+        return float(weight)
+    return float(weight) * (0.5 ** (elapsed / EDGE_HALFLIFE_DAYS))
+
+
+def _record_exists(con, rid):
+    return con.execute("SELECT 1 FROM record WHERE id=?", (rid,)).fetchone() is not None
+
+
+def _touch_records(con, ids, now=None):
+    """Reset the staleness clock on records that were just reactivated (recalled/used)."""
+    now = now or utc_now()
+    ids = [x for x in dict.fromkeys(ids)]
+    if not ids:
+        return
+    qs = ",".join("?" for _ in ids)
+    con.execute(f"UPDATE record SET last_used=? WHERE id IN ({qs})", (now, *ids))
+
+
+def _bump_edge(con, i, j, inc, source, now=None):
+    """Add `inc` affinity to the i–j edge (after decaying what's there), bump count,
+    and reactivate both endpoints. Creates the edge if absent."""
+    if i == j:
+        return
+    a, b = _edge_key(i, j)
+    now = now or utc_now()
+    row = con.execute("SELECT weight,count,source,updated_at FROM edge WHERE a=? AND b=?",
+                      (a, b)).fetchone()
+    if row:
+        w = _decay(row[0], row[3]) + inc
+        src = row[2] if row[2] == source else "mixed"
+        con.execute("UPDATE edge SET weight=?,count=?,source=?,updated_at=? WHERE a=? AND b=?",
+                    (w, row[1] + 1, src, now, a, b))
+    else:
+        con.execute("INSERT INTO edge(a,b,weight,count,source,created_at,updated_at) "
+                    "VALUES(?,?,?,?,?,?,?)", (a, b, float(inc), 1, source, now, now))
+    _touch_records(con, [i, j], now)
+
+
+def _reinforce(con, ids, inc, source, now=None):
+    """Bump every unordered pair among `ids` (a co-use event). Returns pair count."""
+    ids = [x for x in dict.fromkeys(ids)]
+    now = now or utc_now()
+    pairs = 0
+    for x in range(len(ids)):
+        for y in range(x + 1, len(ids)):
+            _bump_edge(con, ids[x], ids[y], inc, source, now)
+            pairs += 1
+    return pairs
+
+
+def _connectivity(con, now=None):
+    """Map record id -> summed decayed edge weight (how wired-in it is)."""
+    now = now or datetime.now(timezone.utc)
+    agg = {}
+    for a, b, w, upd in con.execute("SELECT a,b,weight,updated_at FROM edge"):
+        dw = _decay(w, upd, now)
+        if dw <= 0:
+            continue
+        agg[a] = agg.get(a, 0.0) + dw
+        agg[b] = agg.get(b, 0.0) + dw
+    return agg
 
 
 def log_event(con, agent, action, item_id, summary):
@@ -496,8 +601,35 @@ def cmd_scan(root, args):
     for ids in by_text.values():
         if len(ids) > 1:
             dupes.append(ids)
+
+    # Long-term chopping block: records not used in a long time AND not well-connected.
+    # Reactivation (recall --reinforce / reinforce / link) resets last_used, and a
+    # strongly-wired record is spared even when dormant — use it or lose it.
+    con = connect_db(root)
+    now = datetime.now(timezone.utc)
+    conn_map = _connectivity(con, now)
+    cutoff = (now - timedelta(days=LONGTERM_STALE_DAYS)).date()
+    clause = " AND agent = ?" if args.agent else ""
+    a = (args.agent,) if args.agent else ()
+    stale_lt = []
+    for rid, last_used, recorded_at, created_at in con.execute(
+        "SELECT id,last_used,recorded_at,created_at FROM record "
+        f"WHERE status != 'dropped'{clause}", a):
+        stamp = last_used or recorded_at or created_at
+        if not stamp or not _is_iso(stamp):
+            continue
+        if datetime.fromisoformat(stamp).date() >= cutoff:
+            continue
+        affinity = round(conn_map.get(rid, 0.0), 4)
+        if affinity >= GRAPH_SPARE_AFFINITY:
+            continue  # spared: part of a live cluster
+        stale_lt.append({"id": rid, "last_used": stamp, "affinity": affinity})
+    con.close()
+
     print(json.dumps({"overdue": overdue, "done": done, "stale_days": STALE_DAYS,
-                      "stale": stale, "duplicates": dupes, "count": len(items)}, indent=2))
+                      "stale": stale, "duplicates": dupes, "count": len(items),
+                      "longterm_stale_days": LONGTERM_STALE_DAYS,
+                      "stale_longterm": stale_lt}, indent=2))
 
 
 def cmd_compact(root, args):
@@ -522,17 +654,18 @@ def _to_record(data, con, item_id, status, reason):
     if item is None:
         sys.exit(f"no active item with id '{item_id}' to archive")
     final_status = status or ("done" if item.get("status") == "done" else "open")
+    now_ts = utc_now()
     con.execute(
         "INSERT OR REPLACE INTO record"
         "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
-        "recorded_at,reason,rationale,goal,outcome,constraints,confidence)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,last_used)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (item["id"], item.get("agent"), "item", item.get("type"), item.get("text"),
          json.dumps(item.get("people") or []), json.dumps(item.get("tags") or []),
          item.get("owner"), item.get("due"), final_status, item.get("source"),
-         item.get("created_at"), utc_now(), reason, None,
+         item.get("created_at"), now_ts, reason, None,
          item.get("goal"), item.get("outcome"),
-         json.dumps(item.get("constraints") or []), item.get("confidence")),
+         json.dumps(item.get("constraints") or []), item.get("confidence"), now_ts),
     )
     log_event(con, item.get("agent"), "drop" if status == "dropped" else "archive",
               item["id"], f"{item.get('type')}: {item.get('text')}")
@@ -558,6 +691,7 @@ def cmd_resurface(root, args):
         "created_at": row[9] or utc_today(), "updated_at": utc_today(),
     }
     con.execute("DELETE FROM record WHERE id=?", (args.id,))
+    con.execute("DELETE FROM edge WHERE a=? OR b=?", (args.id, args.id))
     log_event(con, item["agent"], "resurface", args.id, item["text"])
     con.commit()
     con.close()
@@ -571,16 +705,17 @@ def cmd_record(root, args):
         sys.exit(f"--kind must be one of {sorted(RECORD_KINDS)}")
     con = connect_db(root)
     rid = new_id()
+    now_ts = utc_now()
     con.execute(
         "INSERT INTO record"
         "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
-        "recorded_at,reason,rationale,goal,outcome,constraints,confidence)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence,last_used)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (rid, args.agent or DEFAULT_AGENT, args.kind, args.type, args.text,
          json.dumps(args.people or []), json.dumps(args.tags or []),
-         None, None, "done", args.source, utc_today(), utc_now(), None, args.rationale,
+         None, None, "done", args.source, utc_today(), now_ts, None, args.rationale,
          args.goal, args.outcome, json.dumps(args.constraints or []),
-         _check_confidence(args.confidence)),
+         _check_confidence(args.confidence), now_ts),
     )
     log_event(con, args.agent or DEFAULT_AGENT, args.kind, rid, args.text)
     con.commit()
@@ -697,10 +832,44 @@ def _like_hits(con, terms, agent, limit):
     return out
 
 
+def _fetch_records(con, ids):
+    """Map id -> RECALL row (+recorded_at) for the given ids, in one query."""
+    ids = [x for x in dict.fromkeys(ids)]
+    if not ids:
+        return {}
+    qs = ",".join("?" for _ in ids)
+    rows = con.execute(
+        f"SELECT {RECALL_COLS},recorded_at FROM record WHERE id IN ({qs})", ids).fetchall()
+    return {r[0]: r for r in rows}
+
+
+def _spreading_affinity(con, seeds, now=None):
+    """One-hop affinity over edges touching the seed set. Both endpoints of a
+    seed-incident edge earn the decayed weight: a neighbour earns it for being wired
+    to a match, and a seed earns it as a hub for its own connections — so a well-
+    connected text match isn't out-ranked by its own neighbours. Returns
+    {id: affinity}; non-seed ids in here are candidates to pull in."""
+    seeds = set(seeds)
+    if not seeds:
+        return {}
+    qs = ",".join("?" for _ in seeds)
+    aff = {}
+    for a, b, w, upd in con.execute(
+        f"SELECT a,b,weight,updated_at FROM edge WHERE a IN ({qs}) OR b IN ({qs})",
+            (*seeds, *seeds)):
+        dw = _decay(w, upd, now)
+        if dw <= 0:
+            continue
+        aff[a] = aff.get(a, 0.0) + dw
+        aff[b] = aff.get(b, 0.0) + dw
+    return aff
+
+
 def _query_hits(con, terms, agent, limit=10):
     """Ranked keyword search over long-term records. Retrieves with FTS5, then
-    re-ranks by fusing relevance + recency + kind (see fusion constants). Falls back
-    to substring LIKE if FTS5 is unavailable."""
+    re-ranks by fusing relevance + recency + graph affinity, with kind/confidence
+    nudges (see fusion constants). Spreading activation pulls in records strongly
+    linked to the top text hits. Falls back to substring LIKE if FTS5 is missing."""
     if not terms:
         return []
     ranked = _fts_ranked(con, terms, agent, max(limit * 3, 30))
@@ -709,27 +878,43 @@ def _query_hits(con, terms, agent, limit=10):
     if not ranked:
         return []
     bm25 = dict(ranked)
-    ids = list(bm25)
-    placeholders = ",".join("?" for _ in ids)
-    rows = con.execute(
-        f"SELECT {RECALL_COLS},recorded_at FROM record WHERE id IN ({placeholders})", ids).fetchall()
-    by_id = {r[0]: r for r in rows}
+    by_id = _fetch_records(con, list(bm25))
     # dropped records were retired on purpose — keep them out of query results
-    cand = [i for i in ids if i in by_id and by_id[i][8] != "dropped"]
-    # Two ranked lists fused with RRF: relevance (BM25, smaller=better) and recency.
-    # Equal BM25 scores share a rank, so recency genuinely breaks ties.
-    text_pos = _competition_rank(cand, key=lambda i: bm25[i])
+    cand = [i for i in bm25 if i in by_id and by_id[i][8] != "dropped"]
+    if not cand:
+        return []
+    text_ids = set(cand)
+
+    # Spreading activation: seed from the strongest text hits, pull in their neighbours.
+    seeds = sorted(cand, key=lambda i: bm25[i])[:GRAPH_SEEDS]
+    affinity = _spreading_affinity(con, seeds)
+    extra = sorted((i for i in affinity if i not in text_ids
+                    and affinity[i] >= GRAPH_MIN_AFFINITY),
+                   key=lambda i: affinity[i], reverse=True)[:GRAPH_FANOUT]
+    if extra:
+        by_id.update(_fetch_records(con, extra))
+        cand += [i for i in extra if i in by_id and by_id[i][8] != "dropped"]
+
+    # Three ranked lists fused with RRF. Equal keys share a rank, so weaker signals
+    # genuinely break ties. Graph-only candidates get the worst text rank.
+    worst_bm = max(bm25.values()) + 1.0
+    text_pos = _competition_rank(cand, key=lambda i: bm25.get(i, worst_bm))
     rec_pos = _competition_rank(cand, key=lambda i: by_id[i][13] or "", reverse=True)
+    graph_pos = _competition_rank(cand, key=lambda i: affinity.get(i, 0.0), reverse=True)
 
     def score(i):
-        rrf = W_TEXT / (RRF_K + text_pos[i]) + W_RECENCY / (RRF_K + rec_pos[i])
+        rrf = (W_TEXT / (RRF_K + text_pos[i])
+               + W_RECENCY / (RRF_K + rec_pos[i])
+               + W_GRAPH / (RRF_K + graph_pos[i]))
         kind_w = KIND_WEIGHT.get(by_id[i][2], 1.0)          # by_id[i][2] = kind
         conf_w = CONFIDENCE_WEIGHT.get(by_id[i][12], 1.0)   # by_id[i][12] = confidence
         return rrf * kind_w * conf_w
 
-    why = "matches " + " ".join(terms)
+    matched_why = "matches " + " ".join(terms)
     ranked_ids = sorted(cand, key=score, reverse=True)[:limit]
-    return [_row_to_hit(by_id[i], why) for i in ranked_ids]
+    return [_row_to_hit(by_id[i],
+                        matched_why if i in text_ids else "linked to a match")
+            for i in ranked_ids]
 
 
 def _merge_hits(*groups):
@@ -743,10 +928,24 @@ def _merge_hits(*groups):
     return out
 
 
+def _maybe_reinforce(con, args, hits):
+    """When --reinforce is set, treat a multi-result recall as a co-use event:
+    bump affinity across the returned records and reset their staleness clock."""
+    if not getattr(args, "reinforce", False):
+        return 0
+    ids = [h["id"] for h in hits]
+    if len(ids) < 2:
+        return 0
+    pairs = _reinforce(con, ids, COUSE_INCREMENT, "corecall")
+    con.commit()
+    return pairs
+
+
 def cmd_recall(root, args):
     con = connect_db(root)
     hits = _merge_hits(_due_hits(con, args.agent),
                        _query_hits(con, args.query or [], args.agent))
+    _maybe_reinforce(con, args, hits)
     con.close()
     print(json.dumps({"candidates": hits}, indent=2, ensure_ascii=False))
 
@@ -762,6 +961,7 @@ def cmd_brief(root, args):
     if args.query:
         seen = {h["id"] for h in due}
         matches = [m for m in _query_hits(con, args.query, args.agent) if m["id"] not in seen]
+    _maybe_reinforce(con, args, due + matches)
     con.close()
     out = {"agent": args.agent, "profile": data["profile"], "active": active, "due": due}
     if args.query:
@@ -783,6 +983,90 @@ def cmd_agents(root, args):
         counts[a]["longterm"] += n
     con.close()
     print(json.dumps(counts, indent=2, ensure_ascii=False))
+
+
+def cmd_link(root, args):
+    con = connect_db(root)
+    if not _record_exists(con, args.a) or not _record_exists(con, args.b):
+        con.close()
+        sys.exit("both --a and --b must be existing record ids")
+    a, b = _edge_key(args.a, args.b)
+    if args.weight is not None:
+        now = utc_now()
+        con.execute(
+            "INSERT INTO edge(a,b,weight,count,source,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?) ON CONFLICT(a,b) DO UPDATE SET "
+            "weight=excluded.weight, source='manual', updated_at=excluded.updated_at",
+            (a, b, float(args.weight), 0, "manual", now, now))
+        _touch_records(con, [a, b], now)
+    else:
+        _bump_edge(con, a, b, MANUAL_LINK_FLOOR, "manual")
+    con.commit()
+    con.close()
+    print(f"linked {a} <-> {b}")
+
+
+def cmd_unlink(root, args):
+    con = connect_db(root)
+    a, b = _edge_key(args.a, args.b)
+    n = con.execute("DELETE FROM edge WHERE a=? AND b=?", (a, b)).rowcount
+    con.commit()
+    con.close()
+    print(f"removed {n} edge(s)")
+
+
+def cmd_links(root, args):
+    con = connect_db(root)
+    rows = con.execute(
+        "SELECT a,b,weight,count,source,updated_at FROM edge WHERE a=? OR b=?",
+        (args.id, args.id)).fetchall()
+    out = []
+    for a, b, w, cnt, src, upd in rows:
+        out.append({"id": b if a == args.id else a,
+                    "weight": round(_decay(w, upd), 4), "count": cnt, "source": src})
+    out.sort(key=lambda x: x["weight"], reverse=True)
+    con.close()
+    print(json.dumps({"id": args.id, "links": out}, indent=2, ensure_ascii=False))
+
+
+def cmd_reinforce(root, args):
+    ids = [x for x in dict.fromkeys(args.ids or [])]
+    if len(ids) < 2:
+        sys.exit("--ids needs at least two distinct record ids")
+    con = connect_db(root)
+    missing = [x for x in ids if not _record_exists(con, x)]
+    if missing:
+        con.close()
+        sys.exit(f"unknown record ids: {', '.join(missing)}")
+    inc = args.weight if args.weight is not None else COUSE_INCREMENT
+    pairs = _reinforce(con, ids, inc, "corecall")
+    con.commit()
+    con.close()
+    print(f"reinforced {pairs} edge(s) across {len(ids)} memories")
+
+
+def cmd_forget(root, args):
+    """Retire long-term records that hit the chopping block: mark them dropped
+    (kept for audit, excluded from recall) and drop their edges."""
+    ids = [x for x in dict.fromkeys(args.ids or [])]
+    if not ids:
+        sys.exit("--ids needs at least one record id")
+    con = connect_db(root)
+    missing = [x for x in ids if not _record_exists(con, x)]
+    if missing:
+        con.close()
+        sys.exit(f"unknown record ids: {', '.join(missing)}")
+    reason = args.reason or "forgotten (stale, unused)"
+    forgotten = 0
+    for rid in ids:
+        con.execute("UPDATE record SET status='dropped', reason=? WHERE id=?", (reason, rid))
+        con.execute("DELETE FROM edge WHERE a=? OR b=?", (rid, rid))
+        agent = con.execute("SELECT agent FROM record WHERE id=?", (rid,)).fetchone()
+        log_event(con, agent[0] if agent else None, "drop", rid, reason)
+        forgotten += 1
+    con.commit()
+    con.close()
+    print(f"forgot {forgotten} record(s)")
 
 
 def cmd_validate(root, args):
@@ -829,11 +1113,18 @@ def cmd_doctor(root, args):
         for label, v in (("due", r[3]), ("created_at", r[4])):
             if v and not _is_iso(v):
                 issues.append(f"record {r[0]}: {label} not ISO: {v}")
+    dangling = con.execute(
+        "SELECT COUNT(*) FROM edge e WHERE NOT EXISTS(SELECT 1 FROM record r WHERE r.id=e.a) "
+        "OR NOT EXISTS(SELECT 1 FROM record r WHERE r.id=e.b)").fetchone()[0]
+    if dangling:
+        issues.append(f"{dangling} edge(s) reference a missing record")
     n_rec = con.execute("SELECT COUNT(*) FROM record").fetchone()[0]
     n_log = con.execute("SELECT COUNT(*) FROM changelog").fetchone()[0]
+    n_edge = con.execute("SELECT COUNT(*) FROM edge").fetchone()[0]
     con.close()
     print(json.dumps({"integrity_check": integrity, "invariant_issues": issues,
-                      "record_rows": n_rec, "changelog_rows": n_log}, indent=2))
+                      "record_rows": n_rec, "changelog_rows": n_log,
+                      "edge_rows": n_edge}, indent=2))
 
 
 def cmd_render(root, args):
@@ -871,10 +1162,12 @@ def cmd_export(root, args):
     a = (args.agent,) if args.agent else ()
 
     def dump(table, filt):
-        cur = con.execute(f"SELECT * FROM {table}{filt}", a)
+        cur = con.execute(f"SELECT * FROM {table}{filt}", a if filt else ())
         names = [c[0] for c in cur.description]
         return [dict(zip(names, row)) for row in cur.fetchall()]
-    out = {"record": dump("record", where), "changelog": dump("changelog", where)}
+    # edge has no agent column, so it is dumped whole (relationships are cross-agent).
+    out = {"record": dump("record", where), "changelog": dump("changelog", where),
+           "edge": dump("edge", "")}
     con.close()
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
@@ -956,9 +1249,33 @@ def build_parser():
 
     rc = sub.add_parser("recall", help="find long-term items worth surfacing")
     rc.add_argument("--query", nargs="*", help="people or topics to search (ranked FTS5)")
+    rc.add_argument("--reinforce", action="store_true",
+                    help="treat the returned set as co-used: bump affinity + reset staleness")
 
     br = sub.add_parser("brief", help="one-shot prefetch: profile + active + due (+ --query)")
     br.add_argument("--query", nargs="*", help="optional people/topics to also surface from long-term")
+    br.add_argument("--reinforce", action="store_true",
+                    help="treat surfaced long-term records as co-used")
+
+    lk = sub.add_parser("link", help="assert an explicit edge between two records")
+    lk.add_argument("--a", required=True)
+    lk.add_argument("--b", required=True)
+    lk.add_argument("--weight", type=float, help="set an absolute weight (default: add the link floor)")
+
+    ul = sub.add_parser("unlink", help="remove the edge between two records")
+    ul.add_argument("--a", required=True)
+    ul.add_argument("--b", required=True)
+
+    ls = sub.add_parser("links", help="list a record's neighbours by decayed affinity")
+    ls.add_argument("--id", required=True)
+
+    rf = sub.add_parser("reinforce", help="bump co-use affinity across a set of records")
+    rf.add_argument("--ids", nargs="+", required=True, help="two or more record ids used together")
+    rf.add_argument("--weight", type=float, help="affinity increment (default: COUSE_INCREMENT)")
+
+    fg = sub.add_parser("forget", help="retire dormant long-term records (mark dropped)")
+    fg.add_argument("--ids", nargs="+", required=True)
+    fg.add_argument("--reason")
 
     sub.add_parser("agents", help="list agents that have touched memory, with counts")
 
@@ -977,6 +1294,8 @@ DISPATCH = {
     "resurface": cmd_resurface, "record": cmd_record, "recall": cmd_recall,
     "brief": cmd_brief, "agents": cmd_agents, "validate": cmd_validate, "doctor": cmd_doctor,
     "render": cmd_render, "export": cmd_export,
+    "link": cmd_link, "unlink": cmd_unlink, "links": cmd_links,
+    "reinforce": cmd_reinforce, "forget": cmd_forget,
 }
 
 

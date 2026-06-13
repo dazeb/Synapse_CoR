@@ -37,9 +37,23 @@ A `lesson` shines when it carries all four: e.g. `record --kind lesson --text "U
 
 Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later. Short list options accept either form — `--tags a b` or `--tags a,b` both store two distinct tags (constraints are the exception: always quote each phrase).
 
+## Linking & the knowledge graph
+
+Memories can be linked into a weighted graph that feeds recall. Edges form two ways:
+
+- **Explicit:** `link --a <id> --b <id> [--weight N]` asserts a relationship (`unlink` removes it; `links --id <id>` lists a record's neighbours by current affinity).
+- **Co-use (Hebbian):** when you actually use several memories together, `reinforce --ids <id> <id> ...` bumps affinity across every pair. Repeated co-use strengthens the link; weights **decay** with time, so the graph keeps re-clustering around what's currently active. You can also pass `--reinforce` to `recall`/`brief` to treat the returned set as co-used in one step.
+
+At query time, `recall --query` seeds from the top text matches and spreads one hop along strong edges, so a memory wired to what you asked about surfaces even if its own text barely matches (`"why": "linked to a match"`). Reach for `reinforce` when a cluster of memories genuinely worked together — that's what makes the graph smarter over time.
+
 ## Janitor (keep it from going stale)
 
-`python3 scripts/memory.py scan` (optionally `--agent <slug>`) returns overdue, done, stale, and duplicate candidates. Add judgment a script cannot, then propose a short maintenance list and let the user approve. Apply with `compact --archive <ids>` or `--drop <ids> --reason "..."`. Resurface a parked item with `resurface --id <id>` (it returns under its original id and agent).
+`python3 scripts/memory.py scan` (optionally `--agent <slug>`) returns overdue, done, stale, and duplicate active items, plus `stale_longterm` — long-term records not used in `LONGTERM_STALE_DAYS` (60) **and** not well-connected in the graph. Add judgment a script cannot, then propose a short maintenance list and let the user approve.
+
+- Active items: `compact --archive <ids>` or `--drop <ids> --reason "..."`. Resurface a parked item with `resurface --id <id>` (it returns under its original id and agent; its edges are cleared).
+- Long-term records on the chopping block: `forget --ids <ids> [--reason ...]` retires them (marked `dropped`, excluded from recall, edges removed).
+
+**Use it or lose it:** any reactivation — `recall --reinforce`, `reinforce`, or `link` — resets a record's `last_used`, and a strongly-wired record is spared even when dormant. So frequently-used and well-connected memories survive; truly forgotten ones surface for cleanup.
 
 ## Filtering by agent
 
