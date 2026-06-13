@@ -19,6 +19,9 @@ Thumbs.db
 # Personal/local skill build (the repo distributes professor-synapse.zip; .skill is a personal upload artifact)
 *.skill
 
+# Git worktrees
+.worktrees/
+
 # Python artifacts
 __pycache__/
 *.pyc
