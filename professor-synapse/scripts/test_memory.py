@@ -283,5 +283,91 @@ class Maintenance(MemTest):
             self.cli("read")
 
 
+class RichBody(MemTest):
+    """goal / outcome / constraints / confidence and the `lesson` kind."""
+
+    def test_lesson_roundtrip_and_recall_on_goal_and_constraints(self):
+        self.cli("--agent", "ht", "record", "--kind", "lesson",
+                 "--text", "Uploading a blog to HubSpot",
+                 "--goal", "publish a draft post programmatically",
+                 "--outcome", "worked via POST /cms/v3/blogs/posts",
+                 "--constraints", "featured image first", "publish_date is epoch ms",
+                 "--confidence", "high")
+        # recall matches a term that appears ONLY in the constraints
+        on_constraint = self.cli_json("recall", "--query", "epoch")["candidates"]
+        self.assertEqual(len(on_constraint), 1)
+        hit = on_constraint[0]
+        self.assertEqual(hit["kind"], "lesson")
+        self.assertEqual(hit["confidence"], "high")
+        self.assertEqual(hit["constraints"],
+                         ["featured image first", "publish_date is epoch ms"])
+        self.assertEqual(hit["goal"], "publish a draft post programmatically")
+        # and a term that appears ONLY in the goal
+        self.assertTrue(self.cli_json("recall", "--query", "programmatically")["candidates"])
+
+    def test_constraints_are_phrases_not_comma_split(self):
+        # a single gotcha may contain a comma; it must stay one constraint
+        self.cli("--agent", "a", "record", "--kind", "lesson", "--text", "x",
+                 "--constraints", "set publish_date, in epoch ms", "second gotcha")
+        hit = self.cli_json("recall", "--query", "publish_date")["candidates"][0]
+        self.assertEqual(hit["constraints"], ["set publish_date, in epoch ms", "second gotcha"])
+
+    def test_confidence_validated_and_aliased(self):
+        self.cli("--agent", "a", "add", "--text", "t", "--confidence", "med")
+        self.assertEqual(self.cli_json("read")["active"][0]["confidence"], "medium")
+        with self.assertRaises(SystemExit):
+            self.cli("--agent", "a", "record", "--kind", "fact", "--text", "y",
+                     "--confidence", "superhigh")
+
+    def test_confidence_weights_fusion(self):
+        lo = self.id_by_text  # alias for brevity
+        self.cli("--agent", "a", "record", "--kind", "fact", "--text", "acme one",
+                 "--confidence", "low")
+        self.cli("--agent", "a", "record", "--kind", "fact", "--text", "acme two",
+                 "--confidence", "high")
+        low_id, high_id = lo("acme one"), lo("acme two")
+        ts = "2026-03-01T00:00:00+00:00"
+        self.set_recorded_at(low_id, ts)
+        self.set_recorded_at(high_id, ts)  # equal relevance + recency + kind -> confidence decides
+        order = [h["id"] for h in self.cli_json("recall", "--query", "acme")["candidates"]]
+        self.assertEqual(order[0], high_id, "high confidence outranks low, all else equal")
+
+    def test_lesson_fields_survive_archive_and_resurface(self):
+        self.cli("--agent", "a", "add", "--text", "build the thing",
+                 "--goal", "ship v2", "--constraints", "needs review", "--confidence", "medium")
+        iid = self.cli_json("read")["active"][0]["id"]
+        self.cli("compact", "--archive", iid)
+        self.cli("resurface", "--id", iid)
+        item = self.cli_json("read")["active"][0]
+        self.assertEqual(item["goal"], "ship v2")
+        self.assertEqual(item["constraints"], ["needs review"])
+        self.assertEqual(item["confidence"], "medium")
+
+    def test_migration_from_old_schema_preserves_data_and_allows_lesson(self):
+        # Build a db with the pre-2.1 schema: restrictive kind CHECK, no new columns.
+        db = os.path.join(self.root, "memory", "longterm.db")
+        con = sqlite3.connect(db)
+        con.executescript(
+            "CREATE TABLE record (id TEXT PRIMARY KEY, agent TEXT,"
+            " kind TEXT NOT NULL CHECK(kind IN ('item','decision','note','fact')),"
+            " type TEXT, text TEXT NOT NULL, people TEXT, tags TEXT, owner TEXT, due TEXT,"
+            " status TEXT CHECK(status IN ('open','done','deferred','dropped')), source TEXT,"
+            " created_at TEXT, recorded_at TEXT, reason TEXT, rationale TEXT);"
+            "CREATE TABLE changelog (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT,"
+            " agent TEXT, action TEXT, item_id TEXT, summary TEXT);")
+        con.execute("INSERT INTO record(id,agent,kind,text,recorded_at) "
+                    "VALUES('m-legacy01','old','fact','legacy fact','2026-01-01T00:00:00+00:00')")
+        con.commit()
+        con.close()
+        # New code must migrate on connect: accept a lesson AND keep the legacy row.
+        self.cli("--agent", "a", "record", "--kind", "lesson", "--text", "post-migration lesson")
+        doc = self.cli_json("doctor")
+        self.assertEqual(doc["integrity_check"], "ok")
+        self.assertEqual(doc["invariant_issues"], [])
+        self.assertEqual(doc["record_rows"], 2)
+        kinds = {r["kind"] for r in self.cli_json("export")["record"]}
+        self.assertEqual(kinds, {"fact", "lesson"})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

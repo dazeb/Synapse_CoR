@@ -52,8 +52,11 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 MEM_DIR = SKILL_ROOT / "memory"
 ITEM_STATUS = {"open", "done"}
-RECORD_KINDS = {"item", "decision", "note", "fact"}
+RECORD_KINDS = {"item", "decision", "note", "fact", "lesson"}
 RECORD_STATUS = {"open", "done", "deferred", "dropped"}
+CONFIDENCE_LEVELS = {"high", "medium", "low"}
+# Optional fusion nudge by confidence (applied multiplicatively when present).
+CONFIDENCE_WEIGHT = {"high": 1.15, "medium": 1.0, "low": 0.85}
 STALE_DAYS = 21
 LOG_CAP_DAYS = 90
 SCHEMA_VERSION = 1
@@ -63,10 +66,12 @@ DEFAULT_AGENT = "unknown"
 RRF_K = 60                       # Reciprocal Rank Fusion damping; larger = flatter
 W_TEXT = 1.0                     # weight of the BM25 relevance ranking
 W_RECENCY = 0.5                  # weight of the recency ranking (secondary signal)
-# BM25 per-column weights, in FTS index column order (id, text, people, tags, owner).
-# people/tags outrank free text: an exact tag/person hit is a stronger signal.
-BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0)
-KIND_WEIGHT = {"fact": 1.3, "decision": 1.2, "note": 1.0, "item": 1.0}
+# BM25 per-column weights, in FTS index column order
+# (id, text, people, tags, owner, goal, outcome, constraints).
+# people/tags/constraints outrank free text: an exact tag/person/gotcha hit is a
+# stronger signal. goal/outcome are weighted above plain text but below the lists.
+BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0, 2.0, 1.5, 3.0)
+KIND_WEIGHT = {"fact": 1.3, "lesson": 1.25, "decision": 1.2, "note": 1.0, "item": 1.0}
 
 
 def utc_now():
@@ -203,9 +208,12 @@ def validate_working(data):
             out.append(("fixable", f"active[{i}] missing agent"))
         if item.get("status") not in ITEM_STATUS:
             out.append(("fixable", f"active[{i}] invalid status '{item.get('status')}'"))
-        for key in ("people", "tags"):
+        for key in ("people", "tags", "constraints"):
             if key in item and not isinstance(item[key], list):
                 out.append(("fixable", f"active[{i}] field '{key}' is not a list"))
+        conf = item.get("confidence")
+        if conf is not None and conf not in CONFIDENCE_LEVELS:
+            out.append(("fixable", f"active[{i}] invalid confidence '{conf}'"))
         for d in ("due", "created_at", "updated_at"):
             v = item.get(d)
             if v and not _is_iso(v):
@@ -242,6 +250,12 @@ def fix_working(data):
             if not isinstance(item.get(key), list):
                 item[key] = []
                 changes.append(f"reset {key} on {item['id']}")
+        if "constraints" in item and not isinstance(item["constraints"], list):
+            item["constraints"] = []
+            changes.append(f"reset constraints on {item['id']}")
+        if item.get("confidence") is not None and item["confidence"] not in CONFIDENCE_LEVELS:
+            item["confidence"] = None
+            changes.append(f"cleared invalid confidence on {item['id']}")
         if not item.get("created_at"):
             item["created_at"] = utc_today()
             changes.append(f"backfilled created_at on {item['id']}")
@@ -260,38 +274,75 @@ def fix_working(data):
 # Long-term store
 # --------------------------------------------------------------------------
 
+# `kind` is validated in Python (RECORD_KINDS), not by a DB CHECK, so new kinds can
+# be added without rebuilding the table. The body fields goal/outcome/constraints are
+# optional and conventionally filled by `lesson` records (constraints is a JSON array).
+RECORD_DDL = """
+CREATE TABLE IF NOT EXISTS record (
+    id          TEXT PRIMARY KEY,
+    agent       TEXT,
+    kind        TEXT NOT NULL,
+    type        TEXT,
+    text        TEXT NOT NULL,
+    people      TEXT,
+    tags        TEXT,
+    owner       TEXT,
+    due         TEXT,
+    status      TEXT CHECK(status IN ('open','done','deferred','dropped')),
+    source      TEXT,
+    created_at  TEXT,
+    recorded_at TEXT,
+    reason      TEXT,
+    rationale   TEXT,
+    goal        TEXT,
+    outcome     TEXT,
+    constraints TEXT,
+    confidence  TEXT
+);
+"""
+CHANGELOG_DDL = """
+CREATE TABLE IF NOT EXISTS changelog (
+    seq     INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts      TEXT,
+    agent   TEXT,
+    action  TEXT,
+    item_id TEXT,
+    summary TEXT
+);
+"""
+# Columns in RECORD_DDL order — single source of truth for full-row copies.
+RECORD_COLUMNS = ("id", "agent", "kind", "type", "text", "people", "tags", "owner",
+                  "due", "status", "source", "created_at", "recorded_at", "reason",
+                  "rationale", "goal", "outcome", "constraints", "confidence")
+
+
+def _migrate_record_schema(con):
+    """Bring an existing `record` table up to the current schema. Additive columns
+    are added in place; the old restrictive `kind` CHECK (which forbids 'lesson') is
+    removed by rebuilding the table, preserving every row. No-op on a fresh db."""
+    row = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='record'").fetchone()
+    if not row:
+        return
+    cols = {r[1] for r in con.execute("PRAGMA table_info(record)")}
+    for c in ("goal", "outcome", "constraints", "confidence"):
+        if c not in cols:
+            con.execute(f"ALTER TABLE record ADD COLUMN {c} TEXT")
+    if "kind IN ('item','decision','note','fact')" in (row[0] or ""):
+        collist = ",".join(RECORD_COLUMNS)
+        con.executescript(
+            "ALTER TABLE record RENAME TO _record_old;"
+            + RECORD_DDL
+            + f"INSERT INTO record ({collist}) SELECT {collist} FROM _record_old;"
+            + "DROP TABLE _record_old;"
+        )
+
+
 def connect_db(root):
     _ensure_dir(root)
     con = sqlite3.connect(str(db_path(root)))
-    con.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS record (
-            id          TEXT PRIMARY KEY,
-            agent       TEXT,
-            kind        TEXT NOT NULL CHECK(kind IN ('item','decision','note','fact')),
-            type        TEXT,
-            text        TEXT NOT NULL,
-            people      TEXT,
-            tags        TEXT,
-            owner       TEXT,
-            due         TEXT,
-            status      TEXT CHECK(status IN ('open','done','deferred','dropped')),
-            source      TEXT,
-            created_at  TEXT,
-            recorded_at TEXT,
-            reason      TEXT,
-            rationale   TEXT
-        );
-        CREATE TABLE IF NOT EXISTS changelog (
-            seq     INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts      TEXT,
-            agent   TEXT,
-            action  TEXT,
-            item_id TEXT,
-            summary TEXT
-        );
-        """
-    )
+    con.executescript(RECORD_DDL + CHANGELOG_DDL)
+    _migrate_record_schema(con)
     con.commit()
     return con
 
@@ -312,6 +363,19 @@ def _json_list(s):
         return v if isinstance(v, list) else []
     except (ValueError, TypeError):
         return []
+
+
+def _check_confidence(val):
+    """Normalize an optional confidence to high/medium/low, or exit with guidance."""
+    if val is None:
+        return None
+    v = val.strip().lower()
+    aliases = {"hi": "high", "h": "high", "med": "medium", "m": "medium",
+               "lo": "low", "l": "low"}
+    v = aliases.get(v, v)
+    if v not in CONFIDENCE_LEVELS:
+        sys.exit(f"--confidence must be one of {sorted(CONFIDENCE_LEVELS)} (got '{val}')")
+    return v
 
 
 # --------------------------------------------------------------------------
@@ -359,6 +423,10 @@ def cmd_add(root, args):
         "due": args.due,
         "status": "open",
         "source": args.source,
+        "goal": args.goal,
+        "outcome": args.outcome,
+        "constraints": args.constraints or [],
+        "confidence": _check_confidence(args.confidence),
         "created_at": utc_today(),
         "updated_at": utc_today(),
     }
@@ -370,7 +438,8 @@ def cmd_add(root, args):
 def cmd_update(root, args):
     data = load_working(root)
     item = _find(data, args.id)
-    for field in ("text", "owner", "due", "source", "status", "type", "agent"):
+    for field in ("text", "owner", "due", "source", "status", "type", "agent",
+                  "goal", "outcome"):
         val = getattr(args, field)
         if val is not None:
             item[field] = val
@@ -378,6 +447,10 @@ def cmd_update(root, args):
         item["people"] = args.people
     if args.tags is not None:
         item["tags"] = args.tags
+    if args.constraints is not None:
+        item["constraints"] = args.constraints
+    if args.confidence is not None:
+        item["confidence"] = _check_confidence(args.confidence)
     item["updated_at"] = utc_today()
     save_working(root, data)
     print(f"updated {item['id']}")
@@ -451,12 +524,15 @@ def _to_record(data, con, item_id, status, reason):
     final_status = status or ("done" if item.get("status") == "done" else "open")
     con.execute(
         "INSERT OR REPLACE INTO record"
-        "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,recorded_at,reason,rationale)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (item["id"], item.get("agent"), "item", item.get("type"), item.get("text"),
          json.dumps(item.get("people") or []), json.dumps(item.get("tags") or []),
          item.get("owner"), item.get("due"), final_status, item.get("source"),
-         item.get("created_at"), utc_now(), reason, None),
+         item.get("created_at"), utc_now(), reason, None,
+         item.get("goal"), item.get("outcome"),
+         json.dumps(item.get("constraints") or []), item.get("confidence")),
     )
     log_event(con, item.get("agent"), "drop" if status == "dropped" else "archive",
               item["id"], f"{item.get('type')}: {item.get('text')}")
@@ -467,7 +543,8 @@ def cmd_resurface(root, args):
     data = load_working(root)
     con = connect_db(root)
     row = con.execute(
-        "SELECT id,agent,type,text,people,tags,owner,due,source,created_at FROM record "
+        "SELECT id,agent,type,text,people,tags,owner,due,source,created_at,"
+        "goal,outcome,constraints,confidence FROM record "
         "WHERE id=? AND kind='item'", (args.id,)).fetchone()
     if row is None:
         con.close()
@@ -476,6 +553,8 @@ def cmd_resurface(root, args):
         "id": row[0], "agent": row[1], "type": row[2], "text": row[3],
         "people": _json_list(row[4]), "tags": _json_list(row[5]),
         "owner": row[6], "due": row[7], "status": "open", "source": row[8],
+        "goal": row[10], "outcome": row[11],
+        "constraints": _json_list(row[12]), "confidence": row[13],
         "created_at": row[9] or utc_today(), "updated_at": utc_today(),
     }
     con.execute("DELETE FROM record WHERE id=?", (args.id,))
@@ -494,11 +573,14 @@ def cmd_record(root, args):
     rid = new_id()
     con.execute(
         "INSERT INTO record"
-        "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,recorded_at,reason,rationale)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "(id,agent,kind,type,text,people,tags,owner,due,status,source,created_at,"
+        "recorded_at,reason,rationale,goal,outcome,constraints,confidence)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (rid, args.agent or DEFAULT_AGENT, args.kind, args.type, args.text,
          json.dumps(args.people or []), json.dumps(args.tags or []),
-         None, None, "done", args.source, utc_today(), utc_now(), None, args.rationale),
+         None, None, "done", args.source, utc_today(), utc_now(), None, args.rationale,
+         args.goal, args.outcome, json.dumps(args.constraints or []),
+         _check_confidence(args.confidence)),
     )
     log_event(con, args.agent or DEFAULT_AGENT, args.kind, rid, args.text)
     con.commit()
@@ -506,13 +588,25 @@ def cmd_record(root, args):
     print(f"recorded {args.kind} {rid} [{args.agent or DEFAULT_AGENT}]: {args.text}")
 
 
-RECALL_COLS = "id,agent,kind,type,text,people,tags,due,status"
+RECALL_COLS = ("id,agent,kind,type,text,people,tags,due,status,"
+               "goal,outcome,constraints,confidence")
 
 
 def _row_to_hit(r, why):
-    return {"id": r[0], "agent": r[1], "kind": r[2], "type": r[3], "text": r[4],
-            "people": _json_list(r[5]), "tags": _json_list(r[6]),
-            "due": r[7], "status": r[8], "why": why}
+    hit = {"id": r[0], "agent": r[1], "kind": r[2], "type": r[3], "text": r[4],
+           "people": _json_list(r[5]), "tags": _json_list(r[6]),
+           "due": r[7], "status": r[8], "why": why}
+    goal, outcome, constraints, confidence = r[9], r[10], r[11], r[12]
+    if goal:
+        hit["goal"] = goal
+    if outcome:
+        hit["outcome"] = outcome
+    constraints = _json_list(constraints)
+    if constraints:
+        hit["constraints"] = constraints
+    if confidence:
+        hit["confidence"] = confidence
+    return hit
 
 
 def _due_hits(con, agent):
@@ -547,15 +641,20 @@ def _fts_ranked(con, terms, agent, pool):
     try:
         con.execute("DROP TABLE IF EXISTS recall_fts")
         con.execute("CREATE VIRTUAL TABLE temp.recall_fts USING fts5("
-                    "id UNINDEXED, text, people, tags, owner, tokenize='porter unicode61')")
+                    "id UNINDEXED, text, people, tags, owner, goal, outcome, constraints, "
+                    "tokenize='porter unicode61')")
     except sqlite3.OperationalError:
         return None  # FTS5 not compiled in
     clause = " WHERE agent = ?" if agent else ""
     a = (agent,) if agent else ()
-    rows = con.execute(f"SELECT id,text,people,tags,owner FROM record{clause}", a).fetchall()
+    rows = con.execute(
+        f"SELECT id,text,people,tags,owner,goal,outcome,constraints FROM record{clause}",
+        a).fetchall()
     con.executemany(
-        "INSERT INTO recall_fts(id,text,people,tags,owner) VALUES(?,?,?,?,?)",
-        [(r[0], r[1] or "", " ".join(_json_list(r[2])), " ".join(_json_list(r[3])), r[4] or "")
+        "INSERT INTO recall_fts(id,text,people,tags,owner,goal,outcome,constraints) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        [(r[0], r[1] or "", " ".join(_json_list(r[2])), " ".join(_json_list(r[3])),
+          r[4] or "", r[5] or "", r[6] or "", " ".join(_json_list(r[7])))
          for r in rows])
     weights = ", ".join(str(w) for w in BM25_WEIGHTS)
     try:
@@ -620,11 +719,13 @@ def _query_hits(con, terms, agent, limit=10):
     # Two ranked lists fused with RRF: relevance (BM25, smaller=better) and recency.
     # Equal BM25 scores share a rank, so recency genuinely breaks ties.
     text_pos = _competition_rank(cand, key=lambda i: bm25[i])
-    rec_pos = _competition_rank(cand, key=lambda i: by_id[i][9] or "", reverse=True)
+    rec_pos = _competition_rank(cand, key=lambda i: by_id[i][13] or "", reverse=True)
 
     def score(i):
         rrf = W_TEXT / (RRF_K + text_pos[i]) + W_RECENCY / (RRF_K + rec_pos[i])
-        return rrf * KIND_WEIGHT.get(by_id[i][2], 1.0)  # by_id[i][2] = kind
+        kind_w = KIND_WEIGHT.get(by_id[i][2], 1.0)          # by_id[i][2] = kind
+        conf_w = CONFIDENCE_WEIGHT.get(by_id[i][12], 1.0)   # by_id[i][12] = confidence
+        return rrf * kind_w * conf_w
 
     why = "matches " + " ".join(terms)
     ranked_ids = sorted(cand, key=score, reverse=True)[:limit]
@@ -805,6 +906,10 @@ def build_parser():
     a.add_argument("--owner")
     a.add_argument("--due", help="ISO date YYYY-MM-DD")
     a.add_argument("--source")
+    a.add_argument("--goal", help="what this item is in service of")
+    a.add_argument("--outcome", help="what resulted / current state")
+    a.add_argument("--constraints", nargs="*", help="gotchas/limits (each one a quoted phrase)")
+    a.add_argument("--confidence", help="high | medium | low")
 
     u = sub.add_parser("update", help="update fields on an active item")
     u.add_argument("--id", required=True)
@@ -817,6 +922,10 @@ def build_parser():
     u.add_argument("--status", choices=sorted(ITEM_STATUS))
     u.add_argument("--type")
     u.add_argument("--agent", dest="agent")
+    u.add_argument("--goal")
+    u.add_argument("--outcome")
+    u.add_argument("--constraints", nargs="*", help="replaces the gotcha list")
+    u.add_argument("--confidence", help="high | medium | low")
 
     r = sub.add_parser("resolve", help="mark an active item done")
     r.add_argument("--id", required=True)
@@ -832,13 +941,18 @@ def build_parser():
     rs.add_argument("--id", required=True)
 
     rec = sub.add_parser("record", help="write straight to long-term")
-    rec.add_argument("--kind", required=True, choices=sorted(RECORD_KINDS))
+    rec.add_argument("--kind", required=True, choices=sorted(RECORD_KINDS),
+                     help="lesson = a reusable how-to (fills goal/outcome/constraints)")
     rec.add_argument("--text", required=True)
     rec.add_argument("--rationale")
     rec.add_argument("--type")
     rec.add_argument("--people", nargs="*")
     rec.add_argument("--tags", nargs="*")
     rec.add_argument("--source")
+    rec.add_argument("--goal", help="what was being attempted (esp. for lessons)")
+    rec.add_argument("--outcome", help="what resulted (esp. for lessons)")
+    rec.add_argument("--constraints", nargs="*", help="gotchas/limits (each a quoted phrase)")
+    rec.add_argument("--confidence", help="high | medium | low (esp. for facts)")
 
     rc = sub.add_parser("recall", help="find long-term items worth surfacing")
     rc.add_argument("--query", nargs="*", help="people or topics to search (ranked FTS5)")
@@ -869,6 +983,8 @@ DISPATCH = {
 # List-valued options use nargs="*", so they accept space-separated values
 # (--tags a b). Agents and users also naturally type comma-separated values
 # (--tags a,b) — normalize both forms to a clean list of distinct tokens.
+# Short-token fields where comma-splitting is helpful. constraints is intentionally
+# excluded: each gotcha is a phrase that may itself contain a comma.
 _MULTI_FIELDS = ("people", "tags", "query", "focus_areas", "archive", "drop")
 
 

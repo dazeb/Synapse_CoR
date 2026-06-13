@@ -6,6 +6,7 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ## Unreleased
 
+- **Richer memory body + `lesson` kind.** Records and active items gain four optional fields: `goal` (what it serves), `outcome` (what resulted), `constraints` (a list of gotchas — each a quoted phrase, not comma-split), and `confidence` (`high`/`medium`/`low`). A new `lesson` kind captures a reusable how-to learned by doing and conventionally fills all four. `goal`/`outcome`/`constraints` are full-text indexed (so recall matches a gotcha directly), and `confidence` + `kind` apply multiplicative nudges in the ranked-fusion recall. `kind` is now validated in Python instead of by a DB CHECK; existing long-term dbs upgrade in place on first connect (new columns added; the table rebuilt once to drop the old `kind` CHECK, preserving every row). New CLI flags: `--goal`, `--outcome`, `--constraints`, `--confidence` on `add`/`update`/`record`. Six new tests (32 total).
 - **Tag/people parsing accepts comma- or space-separated values.** `--tags test,install` now stores two distinct tags (`["test", "install"]`), the same as `--tags test install`. Previously a comma-separated string landed as one tag. Normalization applies to all list-valued options (`--tags`, `--people`, `--query`, `--focus-areas`, `--archive`, `--drop`). Added a regression test (26 cases total).
 
 ## v2.0.0 — 2026-06-13

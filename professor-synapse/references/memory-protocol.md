@@ -24,9 +24,18 @@ If you'd rather surface things step by step:
 ## Capture (during and after work)
 
 - Working items: `add --agent <slug> --text "..." [--type ...] [--people ...] [--tags ...] [--due ...]`.
-- Things born straight into long-term: `record --agent <slug> --kind decision|note|fact --text "..." [--rationale ...] [--people ...] [--tags ...]`. Use `fact` for durable things learned about the user, `decision` for choices with a rationale, `note` for context.
+- Things born straight into long-term: `record --agent <slug> --kind decision|note|fact|lesson --text "..." [--rationale ...] [--people ...] [--tags ...]`. Use `fact` for durable things learned about the user, `decision` for choices with a rationale, `note` for context, and `lesson` for a reusable how-to learned by doing.
 
-Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later. List options accept either form — `--tags a b` or `--tags a,b` both store two distinct tags.
+### Richer body (optional on any item or record)
+
+- `--goal "..."` — what this is in service of (the objective).
+- `--outcome "..."` — what resulted / the current state.
+- `--constraints "gotcha one" "gotcha two"` — limits and gotchas. Each is a **quoted phrase** (a constraint may itself contain a comma), not a comma-list.
+- `--confidence high|medium|low` — how sure you are; nudges recall ranking. Best on `fact`s that might decay.
+
+A `lesson` shines when it carries all four: e.g. `record --kind lesson --text "Upload a blog to HubSpot" --goal "publish a draft via API" --outcome "POST /cms/v3/blogs/posts works" --constraints "upload featured image first" "publish_date is epoch ms" --confidence high`. `goal`, `outcome`, and `constraints` are all full-text searchable, so a later `recall --query "hubspot epoch"` surfaces the gotcha directly.
+
+Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later. Short list options accept either form — `--tags a b` or `--tags a,b` both store two distinct tags (constraints are the exception: always quote each phrase).
 
 ## Janitor (keep it from going stale)
 
