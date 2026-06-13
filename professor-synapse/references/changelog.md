@@ -4,6 +4,10 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## Unreleased
+
+- **Tag/people parsing accepts comma- or space-separated values.** `--tags test,install` now stores two distinct tags (`["test", "install"]`), the same as `--tags test install`. Previously a comma-separated string landed as one tag. Normalization applies to all list-valued options (`--tags`, `--people`, `--query`, `--focus-areas`, `--archive`, `--drop`). Added a regression test (26 cases total).
+
 ## v2.0.0 — 2026-06-13
 
 Major version marking the memory architecture and the script-driven update pipeline as the new baseline. Consolidates the v1.1.0 memory work with a one-command updater and removes the legacy HTML-scraping update path.

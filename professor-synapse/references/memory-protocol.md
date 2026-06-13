@@ -26,7 +26,7 @@ If you'd rather surface things step by step:
 - Working items: `add --agent <slug> --text "..." [--type ...] [--people ...] [--tags ...] [--due ...]`.
 - Things born straight into long-term: `record --agent <slug> --kind decision|note|fact --text "..." [--rationale ...] [--people ...] [--tags ...]`. Use `fact` for durable things learned about the user, `decision` for choices with a rationale, `note` for context.
 
-Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later.
+Always fill `--people` and `--tags`; they power recall. Tag with the acting agent so the entry can be filtered later. List options accept either form — `--tags a b` or `--tags a,b` both store two distinct tags.
 
 ## Janitor (keep it from going stale)
 

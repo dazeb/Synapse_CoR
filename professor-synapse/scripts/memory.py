@@ -866,8 +866,32 @@ DISPATCH = {
 }
 
 
+# List-valued options use nargs="*", so they accept space-separated values
+# (--tags a b). Agents and users also naturally type comma-separated values
+# (--tags a,b) — normalize both forms to a clean list of distinct tokens.
+_MULTI_FIELDS = ("people", "tags", "query", "focus_areas", "archive", "drop")
+
+
+def _split_multi(values):
+    out = []
+    for v in values:
+        for part in str(v).split(","):
+            part = part.strip()
+            if part:
+                out.append(part)
+    return out
+
+
+def normalize_multi(args):
+    for field in _MULTI_FIELDS:
+        val = getattr(args, field, None)
+        if val is not None:
+            setattr(args, field, _split_multi(val))
+    return args
+
+
 def main(argv=None):
-    args = build_parser().parse_args(argv)
+    args = normalize_multi(build_parser().parse_args(argv))
     DISPATCH[args.cmd](args.root, args)
 
 
