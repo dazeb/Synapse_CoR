@@ -4,6 +4,10 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## Unreleased
+
+- **Committed self-check (`references/self-check.md`).** A repeatable PASS/FAIL verification of an install — version marker, summoning (happy path + ambiguity + no-match exit 3), the memory loop (recall reinforces and reads the real store, `validate`/`doctor` clean, `forget` retires a throwaway probe), and both test suites — replacing the previously ad-hoc test prompt. Includes a ready-to-paste "Prompt for Claude" block. The update- and rebuild-protocols now end by pointing at it, and it's listed in the SKILL.md resource table.
+
 ## v2.1.0 — 2026-06-13
 
 - **Programmatic agent summoning (`scripts/summon.py`).** Summoning is now one command instead of a manual checklist: `python3 scripts/summon.py "<agent or task>" [--query "terms"]` resolves the agent (exact slug or fuzzy match on name/triggers/description), then assembles a **boot package** whose stdout IS the summon — (1) the agent's full persona/instructions, (2) memory recalled for it inline (it shells out to `memory.py brief --agent <slug> --query ...`, **reinforcing by default** so summoning wires the surfaced memories and resets their staleness, stamped to the agent; `--no-reinforce` for a read-only peek), and (3) the resources it can load, auto-extracted from the agent's own `## Scripts` table and the references it cites, enriched with the SKILL.md "when/what" descriptions. `--query` falls back to the agent's triggers so a bare summon still recalls context; `--json` emits the package as structured data; no/ambiguous matches list candidates or point at agent creation. `references/summon-agent-protocol.md` and the SKILL.md summoning section were rewritten script-first (the script does the file-read + recall so they can't be skipped; the failure-mode table stays as guardrails, plus a manual fallback for when code execution is off). New `scripts/test_summon.py` — 12 stdlib tests against isolated temp skill roots.

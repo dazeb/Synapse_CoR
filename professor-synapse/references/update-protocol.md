@@ -67,6 +67,7 @@ What it does, in order: reads the local `**Version:**` from `SKILL.md`; resolves
    python3 scripts/memory.py doctor      # long-term db integrity
    ```
 3. Package the merged tree with skill-creator (see `rebuild-protocol.md`). The user clicks **"Copy to your skills"** to replace — you cannot do this programmatically.
+4. After the user installs, run the full `references/self-check.md` against the live install — it verifies the version marker, summoning, the memory loop, and both test suites in one PASS/FAIL pass.
 
 The rest of this document explains what the script does under the hood, for transparency or when you need to run a step by hand.
 

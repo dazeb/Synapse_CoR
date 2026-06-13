@@ -134,6 +134,9 @@ cp /home/claude/professor-synapse.skill /mnt/user-data/outputs/
 present_files → professor-synapse.skill
 
 # 7. Instruct user to click "Copy to your skills"
+
+# 8. After the user installs, verify the live install
+#    Run references/self-check.md (version, summoning, memory loop, test suites)
 ```
 
 ### Common Rebuild Triggers
