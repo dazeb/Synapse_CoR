@@ -1,0 +1,12 @@
+# Normalize line endings to LF on commit, regardless of the editing platform.
+# Prevents CRLF churn when the repo is edited from Windows / Google Drive mounts.
+* text=auto eol=lf
+
+# Keep shell scripts and Python as LF always (they break with CRLF).
+*.sh text eol=lf
+*.py text eol=lf
+
+# Binary artifacts — never normalize.
+*.zip binary
+*.skill binary
+*.db binary

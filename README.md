@@ -10,7 +10,7 @@
 
 ---
 
-## Two Ways to Use Professor Synapse
+## Three Ways to Use Professor Synapse
 
 ### 1. Universal Prompt (Any AI)
 
@@ -27,19 +27,23 @@ The classic approach — copy and paste the prompt into any AI chat interface.
 
 ### 2. Claude Skill (Self-Building)
 
-A more powerful version designed for Claude. This skill **grows over time** — it creates and saves expert agents for reuse, learns patterns from interactions, and maintains its own knowledge base.
+A more powerful version designed for **Claude Desktop**, installed as a `.zip` you upload in Settings. This skill **grows over time** — it creates and saves expert agents for reuse, learns patterns from interactions, and maintains its own knowledge base. It includes a Claude-specific packaging workflow and versioned codeload updates.
 
-**Folder:** `professor-synapse/`
+**Folder:** `professor-synapse-claude/` (distributed as `professor-synapse-claude.zip`)
 
-**Features:**
+### 3. Portable Skill (Any Skills-Aware Assistant)
+
+The same self-building skill, but **stripped of the Claude-only packaging machinery** so you can drop it straight into any assistant's skills directory — `.claude/skills/`, `.codex/skills/`, or wherever your tooling reads skills from. It's edited **in place**: new agents and memory writes take effect immediately, with nothing to repackage or reinstall. It even **updates itself in place** — ask it to check for updates and it pulls the latest release over its own files, keeping your memory and customizations.
+
+**Folder:** `professor-synapse-skill/` (copy the folder into your skills directory)
+
+**Both skill flavors share these features:**
 - 🔎 **Domain Researcher** agent that browses the web before creating new experts
 - 📚 **Self-building agent library** — created agents are saved for future sessions
 - 🧠 **Persistent memory** — a shared, agent-tagged store that remembers across sessions, with ranked-fusion recall (see below)
 - 💡 **Pattern learning** — captures what works and what doesn't (Global Learned Patterns in SKILL.md + per-agent patterns)
 - 📋 **Auto-generated index** — agents are automatically catalogued
 - 🎭 **Multi-agent debates** — convene multiple specialists for complex decisions
-- 🔄 **Versioned updates** — pull tagged releases from GitHub (codeload tarball) without losing your agents or memory
-- 🔧 **Skill rebuilding** — easy rebuild workflow for local changes
 
 ---
 
@@ -47,12 +51,12 @@ A more powerful version designed for Claude. This skill **grows over time** — 
 
 ### Install
 
-1. **Download** `professor-synapse.zip` from this repo
+1. **Download** `professor-synapse-claude.zip` from this repo
 
 2. **Add to Claude:**
    - Open Claude → **Settings** → **Capabilities** → **Skills**
    - Click **Add new skill**
-   - Upload `professor-synapse.zip`
+   - Upload `professor-synapse-claude.zip`
 
 3. **Start using it:**
    - Professor Synapse activates when you say things like:
@@ -69,7 +73,7 @@ Just ask Professor Synapse to **"check for updates."** It compares its `Version:
 ### Skill Structure
 
 ```
-professor-synapse/
+professor-synapse-claude/         # (professor-synapse-skill/ is the same tree minus the ✦ files)
 ├── SKILL.md                      # Identity, workflow + Global Learned Patterns
 ├── agents/
 │   ├── INDEX.md                  # Auto-generated registry
@@ -85,17 +89,23 @@ professor-synapse/
 │   ├── memory-protocol.md        # How recall/capture/cleanup work
 │   ├── memory-data-model.md      # Memory schema + ranked-fusion search
 │   ├── domain-expertise.md       # Domain mappings
-│   ├── file-operations.md        # How to save/update files
 │   ├── scripts-protocol.md       # Standards for agent scripts
-│   ├── update-protocol.md        # Versioned update workflow (codeload)
-│   ├── rebuild-protocol.md       # Local change rebuild workflow
-│   └── changelog.md              # Version history
+│   ├── self-check.md             # PASS/FAIL install verification
+│   ├── changelog.md              # Version history (per-flavor — they diverge)
+│   ├── update-protocol.md        # ◆ Both flavors, differ: Claude repackages; portable applies in place
+│   ├── file-operations.md        # ✦ Claude-only: save/update files + packaging
+│   └── rebuild-protocol.md       # ✦ Claude-only: local change rebuild workflow
 └── scripts/
     ├── memory.py                 # Shared agent-tagged memory CLI
+    ├── summon.py                 # Assemble an agent boot package
     ├── test_memory.py            # Memory test suite (stdlib unittest)
+    ├── test_summon.py            # Summon test suite
     ├── rebuild-index.sh          # Regenerate INDEX.md
-    └── update.sh                 # Fetch latest release + build merged update tree
+    └── update.sh                 # ◆ Both flavors, differ: Claude prepares a package; portable applies in place
 ```
+
+> **✦ = Claude flavor only.** The portable `professor-synapse-skill/` flavor omits these files and the SKILL.md packaging section, since it's edited in place and needs no packaging or rebuild-to-persist step.
+> **◆ = present in both, but different.** Both flavors self-update from GitHub (`update-protocol.md` + `update.sh`); the Claude flavor prepares a package the user installs via "Copy to your skills," while the portable flavor writes the merged update straight over its own files in place.
 
 ### Recommended: Claude Project Setup
 
@@ -116,6 +126,17 @@ Then follow these instructions:
 - Automatically loads the skill at conversation start
 - Reads the latest SKILL.md (including any updates)
 - Ensures Professor Synapse has full context from your customizations
+
+## Portable Skill Setup
+
+For Codex, or any assistant that loads skills from a folder:
+
+1. **Copy** the `professor-synapse-skill/` folder into your assistant's skills directory — e.g. `.claude/skills/`, `.codex/skills/`, or wherever your tooling reads skills from. (Rename it to `professor-synapse/` if your tool keys skills by folder name.)
+2. **Use it** — invoke Professor Synapse the way your assistant loads skills ("help me with…", "I need guidance on…").
+
+Everything is edited **in place**: agents you create and memory the skill captures take effect immediately — there's nothing to repackage or reinstall.
+
+**Updating:** just ask Professor Synapse to **"check for updates"** (or "update yourself"). It compares its `Version:` against the latest release, downloads the canonical repo as a codeload tarball, merges it, and writes the new files straight over its own folder — **preserving your `memory/` store, custom agents, and learned patterns**. You don't download or move anything; running the update *is* the update. See `references/update-protocol.md` for the mechanics.
 
 ### How the Skill Works
 

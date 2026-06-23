@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# update.sh - Fetch the latest Professor Synapse release and prepare a merged
-# update tree, preserving the local memory/ store and custom agents.
+# update.sh (portable flavor) - Fetch the latest Professor Synapse release and
+# prepare a merged update tree, preserving the local memory/ store and custom
+# agents. Unlike the Claude flavor, the portable skill is edited IN PLACE, so
+# after this runs you apply the tree directly over the install dir — no
+# repackaging, no "Copy to your skills" step. See references/update-protocol.md.
 #
 # Mechanism: downloads the canonical repo as a codeload source tarball pinned to
-# the latest release tag. (GitHub release-asset hosts, *.githubusercontent.com,
-# are proxy-blocked in the skill sandbox, so we use codeload, not the .zip asset.
-# github.com drives version detection.) See references/update-protocol.md.
+# the latest release tag. (github.com drives version detection via
+# releases/latest; codeload.github.com serves the source tarball.)
 #
 # Usage:
 #   bash scripts/update.sh [--check] [--ref <tag|branch>] [--out <dir>] [--force]
@@ -14,14 +16,15 @@
 #     --out     where to build the merged tree (default: /tmp/ps-update)
 #     --force   build even if already up to date
 #
-# It does NOT install. After it runs, package the merged tree with skill-creator
-# (references/rebuild-protocol.md); the user clicks "Copy to your skills".
+# It does NOT modify the install itself. After it runs, apply the merged tree in
+# place (the protocol shows the exact command) and rebuild the index.
 
 set -euo pipefail
 
 REPO="ProfSynapse/Professor-Synapse"
+FLAVOR="professor-synapse-skill"          # the folder this flavor lives in upstream
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="$(dirname "$SCRIPT_DIR")"   # the skill root (.../professor-synapse)
+INSTALL_DIR="$(dirname "$SCRIPT_DIR")"    # the skill root (wherever it was dropped)
 OUT="/tmp/ps-update"
 REF=""
 FORCE=0
@@ -35,7 +38,7 @@ while [ $# -gt 0 ]; do
     --out)   OUT="$2"; shift 2;;
     --force) FORCE=1; shift;;
     --check) CHECK=1; shift;;
-    -h|--help) sed -n '2,18p' "$0"; exit 0;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0;;
     *) note "unknown arg: $1"; exit 2;;
   esac
 done
@@ -80,8 +83,8 @@ note "Downloading codeload tarball ($REF)…"
 curl -fsSL -o "$TARBALL" "https://codeload.github.com/$REPO/tar.gz/$REF"
 CANON="$(mktemp -d /tmp/ps-canon.XXXXXX)"
 tar -xzf "$TARBALL" -C "$CANON" --strip-components=1
-SRC="$CANON/professor-synapse"
-[ -d "$SRC" ] || { note "ERROR: extracted tree has no professor-synapse/ dir"; exit 1; }
+SRC="$CANON/$FLAVOR"
+[ -d "$SRC" ] || { note "ERROR: extracted tree has no $FLAVOR/ dir"; exit 1; }
 
 # --- build the merged tree (canonical, then overlay local content) ---
 rm -rf "$OUT"; mkdir -p "$OUT"
@@ -141,7 +144,9 @@ if [ "${#MANUAL[@]}" -gt 0 ]; then
   for m in "${MANUAL[@]}"; do note "  - $m"; done
 fi
 note ""
-note "Next: resolve any merges above, then package $OUT with skill-creator"
-note "(references/rebuild-protocol.md). The user clicks 'Copy to your skills' to install."
+note "Next: resolve any merges above, then APPLY IN PLACE (this skill is edited live):"
+note "  cp -R \"$OUT/.\" \"$INSTALL_DIR/\""
+note "  bash \"$INSTALL_DIR/scripts/rebuild-index.sh\""
+note "Your memory/ store and custom agents are already carried into $OUT, so the copy is safe."
 
 rm -f "$TARBALL"; rm -rf "$CANON"
