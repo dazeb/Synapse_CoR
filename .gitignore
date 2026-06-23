@@ -16,7 +16,7 @@ Thumbs.db
 
 .claude/
 
-# Personal/local skill build (the repo distributes professor-synapse.zip; .skill is a personal upload artifact)
+# Personal/local skill build (the repo distributes professor-synapse-claude.zip; .skill is a personal upload artifact)
 *.skill
 
 # Git worktrees
@@ -27,4 +27,5 @@ __pycache__/
 *.pyc
 
 # Memory store runtime backup (clean seed is committed; .bak is per-run)
-professor-synapse/memory/memory.json.bak
+professor-synapse-claude/memory/memory.json.bak
+professor-synapse-skill/memory/memory.json.bak

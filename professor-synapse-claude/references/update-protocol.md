@@ -17,7 +17,7 @@ You are performing a **smart merge and rebuild**, not a blind overwrite.
 ## The Canonical Source
 
 **GitHub Repository:** `https://github.com/ProfSynapse/Professor-Synapse`
-**Skill Location:** `professor-synapse/` folder inside the repo
+**Skill Location:** `professor-synapse-claude/` folder inside the repo
 
 ---
 
@@ -102,15 +102,15 @@ curl -sSL -o /tmp/ps.tar.gz \
 
 mkdir -p /tmp/ps-canonical
 tar -xzf /tmp/ps.tar.gz -C /tmp/ps-canonical --strip-components=1
-# Canonical skill now at: /tmp/ps-canonical/professor-synapse/
+# Canonical skill now at: /tmp/ps-canonical/professor-synapse-claude/
 ```
 
-`--strip-components=1` removes the tarball's top-level `Professor-Synapse-<ref>/` wrapper, so the skill lands at `/tmp/ps-canonical/professor-synapse/`.
+`--strip-components=1` removes the tarball's top-level `Professor-Synapse-<ref>/` wrapper, so the skill lands at `/tmp/ps-canonical/professor-synapse-claude/`.
 
 ### Step 3: Check the changelog
 
 ```bash
-cat /tmp/ps-canonical/professor-synapse/references/changelog.md
+cat /tmp/ps-canonical/professor-synapse-claude/references/changelog.md
 ```
 
 Summarize what changed for the user before merging.
@@ -120,7 +120,7 @@ Summarize what changed for the user before merging.
 Start from the canonical tree and layer the user's content back on top. **The `memory/` store is the critical one — see "Memory Store: Special Handling".**
 
 ```bash
-SRC=/tmp/ps-canonical/professor-synapse           # canonical (new)
+SRC=/tmp/ps-canonical/professor-synapse-claude    # canonical (new)
 DST=/mnt/skills/user/professor-synapse            # current install
 MERGED=/tmp/ps-merged
 

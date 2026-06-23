@@ -1,8 +1,17 @@
 # Changelog
 
-Version history for the Professor Synapse skill. Check this after fetching updates to see what changed.
+Version history for the **portable flavor** of the Professor Synapse skill — the one you drop into any skills-aware assistant (`.claude/skills/`, `.codex/skills/`, …). (The Claude flavor in `professor-synapse-claude/` keeps its own changelog and versions independently from here on.)
 
 ---
+
+## v2.4.0 — 2026-06-23
+
+- **Portable flavor created.** Forked from the Claude flavor at v2.3.0 and stripped of the Claude-only distribution machinery so it can be dropped into any skills-aware assistant. Removed `references/file-operations.md` and `rebuild-protocol.md`; the packaging-workflow language is gone from the agents, `agent-template.md`, `rebuild-index.sh`, `summon.py`, `memory-protocol.md`, and `self-check.md`.
+- **Self-updating in place.** `references/update-protocol.md` and `scripts/update.sh` were kept but **adapted to apply in place** rather than repackage. Ask Professor Synapse to update and it fetches the latest release, merges it, and writes the new files straight over its own install — preserving your `memory/` store, custom agents, and Learned Patterns. The user doesn't download or move anything; running the protocol *is* the update.
+- **Edited in place.** Agent edits and memory writes take effect immediately — nothing to repackage or rebuild-to-persist.
+- **SKILL.md** is a single-tier router — summon an internal agent (or create one) — with a light note that it may hand off to other skills present in your workspace.
+
+> Entries below (v2.3.0 and earlier) are shared history from before the split, when the skill was Claude-only; some reference packaging/codeload steps that no longer apply to this flavor.
 
 ## v2.3.0 — 2026-06-13
 
