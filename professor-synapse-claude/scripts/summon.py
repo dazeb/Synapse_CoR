@@ -215,8 +215,9 @@ def render_markdown(agent, memory, resources, scripts_section, query_terms):
     else:
         L.append("Reason over this — don't just echo it. Read each hit's `why` "
                  "(`matches` = direct, `due date reached` = a reminder, `linked to a match` = "
-                 "associative context from the graph). Honour any `constraints` before acting "
-                 "and calibrate trust by `confidence`.")
+                 "associative context from the graph, `recent (no query match)` = surfaced by "
+                 "recency because nothing matched the query). Honour any `constraints` before "
+                 "acting and calibrate trust by `confidence`.")
         L.append("")
         L.append("```json")
         L.append(json.dumps(memory, indent=2, ensure_ascii=False))

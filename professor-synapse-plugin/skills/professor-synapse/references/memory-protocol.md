@@ -17,13 +17,13 @@ Memory is a loop, not a lookup: **recall → reason → act → capture → main
 
 ## Recall (start of work)
 
-**Fast path:** `python3 scripts/memory.py --agent <slug> brief` is the one-shot prefetch — it returns the shared profile, the agent's active items, and any long-term items now due in a single call. Add `--query <terms>` once you know the people and topics in play and it folds ranked keyword matches in too. Start here; reach for the individual verbs below when you want a narrower view.
+**Fast path:** `python3 scripts/memory.py --agent <slug> brief` is the one-shot prefetch — it returns the shared profile, the agent's active items, and any long-term items now due in a single call. Add `--query <terms>` once you know the people and topics in play and it folds ranked keyword matches in (`matches`) too. With **no query** (or a query that matches nothing), it instead folds in a `recent` set — the agent's most relevant recent long-term records, ranked by recency with the same kind/confidence nudges — so a bare prefetch still hands back substantive memory instead of nothing. Start here; reach for the individual verbs below when you want a narrower view.
 
 If you'd rather surface things step by step:
 
 1. `python3 scripts/memory.py --agent <slug> read` for that agent's active items, and `read` with no agent for the shared picture.
 2. `python3 scripts/memory.py --agent <slug> recall` for long-term items whose due date has arrived.
-3. Once you know the people and topics in play, `python3 scripts/memory.py recall --query <terms>` (add `--agent <slug>` to scope to one agent, omit it to search across all agents). `--query` is ranked full-text search (SQLite FTS5: stemming + prefix matching, best matches first), so terms like `renew` also surface `renewal`/`renewals`. The shared profile and other agents' facts can be relevant, so search broadly, then scope when you want one agent's view.
+3. Once you know the people and topics in play, `python3 scripts/memory.py recall --query <terms>` (add `--agent <slug>` to scope to one agent, omit it to search across all agents). `--query` is ranked full-text search (SQLite FTS5: stemming + prefix matching, best matches first), so terms like `renew` also surface `renewal`/`renewals`. The shared profile and other agents' facts can be relevant, so search broadly, then scope when you want one agent's view. `recall` with **no query** (or one that matches nothing) falls back to the recency-ranked recent set rather than returning empty, so a bare `recall --agent <slug>` enumerates that agent's most relevant recent records.
 
 ## Reading recall results (reason, don't just dump)
 

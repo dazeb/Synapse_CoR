@@ -135,6 +135,14 @@ Near the top of `scripts/memory.py`:
 
 RRF is scale-free, so the disparate signals combine without normalizing raw scores. At this store's scale (tens to low hundreds of records) the whole thing is instant and needs zero maintenance. If a SQLite build lacks FTS5, `recall` falls back to substring `LIKE`, so it is never worse than before.
 
+**No-query fallback (`_recent_hits`).** Keyword recall needs query terms; a bare summon would otherwise return empty even when the agent has records. So the fallback surfaces the agent's `RECENT_DEFAULT` most relevant recent records: pull a recency-ordered pool (`ORDER BY recorded_at DESC`, excluding `dropped`), then rerank *inside* that pool by recency (`W_RECENCY`) fused with the same `KIND_WEIGHT`/`CONFIDENCE_WEIGHT` nudges. Only recent records are ever in play, but a high-value `fact`/`lesson` can edge out a slightly newer `note`.
+
+The trigger differs by verb, on purpose:
+- **`brief`** (the summon prefetch — `summon.py` auto-fills the agent's triggers as the query) falls back whenever there are **no matches**, since a fresh agent whose triggers don't lexically match its stored memory is the exact case we're fixing. Returns the set under a `recent` key.
+- **`recall`** (an explicit search verb) falls back only when **no query terms were supplied at all**. An explicit query that simply misses still returns empty — that's an honest "no match," not an excuse to dump recent records. Folds the set into `candidates`.
+
+These hits carry `"why": "recent (no query match)"` and are *not* co-wired into the graph (no query, no Hebbian event) — they only reset their own staleness clock when reinforcement is on.
+
 Semantic/vector search (e.g. `sqlite-vec` + embeddings) was considered and **rejected as overkill**: it needs a loadable extension (often disabled in the sandbox's `sqlite3`) plus vendored model weights, for gains that aren't perceptible at this scale — and the LLM driving the skill already supplies the semantic layer (it can issue synonym queries itself). Revisit only if the store grows by orders of magnitude.
 
 ## Deferred on purpose

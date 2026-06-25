@@ -98,6 +98,11 @@ W_RECENCY = 0.5                  # weight of the recency ranking (secondary sign
 BM25_WEIGHTS = (0.0, 1.0, 3.0, 3.0, 1.0, 2.0, 1.5, 3.0, 1.0, 1.5, 1.0)
 KIND_WEIGHT = {"fact": 1.3, "lesson": 1.25, "decision": 1.2, "note": 1.0, "item": 1.0}
 
+# No-query recall fallback: when a summon/recall arrives with no query terms (or the
+# query matches nothing), surface this many of the agent's most recent records,
+# reranked by recency with the same kind/confidence nudges as keyword recall.
+RECENT_DEFAULT = 8
+
 # Knowledge-graph (co-recall affinity) tuning. Edges are undirected, weighted links
 # between records; weight grows with co-use and decays with time ("fire together,
 # wire together" + forgetting), then feeds recall via spreading activation.
@@ -1059,6 +1064,40 @@ def _query_hits(con, terms, agent, limit=10):
             for i in ranked_ids]
 
 
+def _recent_hits(con, agent, limit=RECENT_DEFAULT):
+    """No-query fallback: surface an agent's most relevant recent long-term records.
+
+    Keyword recall needs query terms; a bare summon (or a query that matches nothing)
+    would otherwise hand back an empty set even when the store holds plenty for this
+    agent. So pull a recency-ordered pool, then rerank inside it by recency fused with
+    the same kind/confidence nudges keyword recall uses — a high-value fact/lesson can
+    edge out a slightly newer note, but only recent records are ever in play. Excludes
+    'dropped' (retired) records, matching query recall; NULL status (the norm for
+    facts/decisions/lessons/notes) is kept."""
+    clause = " AND agent = ?" if agent else ""
+    a = (agent,) if agent else ()
+    pool = max(limit * 3, 30)
+    rows = con.execute(
+        f"SELECT {RECALL_COLS},recorded_at FROM record "
+        f"WHERE COALESCE(status,'') != 'dropped'{clause} "
+        "ORDER BY recorded_at DESC LIMIT ?",
+        (*a, pool)).fetchall()
+    if not rows:
+        return []
+    by_id = {r[0]: r for r in rows}
+    cand = list(by_id)
+    rec_pos = _competition_rank(cand, key=lambda i: by_id[i][16] or "", reverse=True)  # [16] = recorded_at
+
+    def score(i):
+        rrf = W_RECENCY / (RRF_K + rec_pos[i])
+        kind_w = KIND_WEIGHT.get(by_id[i][2], 1.0)          # by_id[i][2] = kind
+        conf_w = CONFIDENCE_WEIGHT.get(by_id[i][12], 1.0)   # by_id[i][12] = confidence
+        return rrf * kind_w * conf_w
+
+    ranked_ids = sorted(cand, key=score, reverse=True)[:limit]
+    return [_row_to_hit(by_id[i], "recent (no query match)") for i in ranked_ids]
+
+
 def _merge_hits(*groups):
     """Concatenate hit groups, keeping the first occurrence of each id."""
     out, seen = [], set()
@@ -1092,6 +1131,10 @@ def cmd_recall(root, args):
     due = _due_hits(con, args.agent)
     qhits = _query_hits(con, args.query or [], args.agent)
     hits = _merge_hits(due, qhits)
+    if not args.query:  # no query terms supplied -> recency fallback so a bare recall isn't empty
+        # (an explicit query that just misses still returns empty — that's an honest "no match")
+        seen = {h["id"] for h in hits}
+        hits = _merge_hits(hits, [h for h in _recent_hits(con, args.agent) if h["id"] not in seen])
     # reinforce only the topical query matches; reset last_used on everything surfaced
     _maybe_reinforce(con, args, edge_hits=qhits, touch_hits=hits)
     con.close()
@@ -1105,16 +1148,22 @@ def cmd_brief(root, args):
         active = [i for i in active if i.get("agent") == args.agent]
     con = connect_db(root)
     due = _due_hits(con, args.agent)
+    seen = {h["id"] for h in due}
     matches = []
     if args.query:
-        seen = {h["id"] for h in due}
         matches = [m for m in _query_hits(con, args.query, args.agent) if m["id"] not in seen]
+        seen.update(h["id"] for h in matches)
+    # No query, or it matched nothing: fall back to the agent's most relevant recent
+    # records so a bare summon still hands back substantive memory instead of nothing.
+    recent = [] if matches else [h for h in _recent_hits(con, args.agent) if h["id"] not in seen]
     # wire the topical query matches; reset last_used on everything surfaced
-    _maybe_reinforce(con, args, edge_hits=matches, touch_hits=due + matches)
+    _maybe_reinforce(con, args, edge_hits=matches, touch_hits=due + matches + recent)
     con.close()
     out = {"agent": args.agent, "profile": data["profile"], "active": active, "due": due}
     if args.query:
         out["matches"] = matches
+    if recent:
+        out["recent"] = recent
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
 

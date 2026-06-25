@@ -4,6 +4,10 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## v3.3.0 — 2026-06-25 (plugin)
+
+- **No-query recall fallback: a bare summon now surfaces recent memory instead of nothing.** Keyword recall needs query terms, so `recall --agent <slug>` / `brief --agent <slug>` with **no `--query`** (or a query that matched nothing) used to return empty even when the agent had plenty stored — the `--agent` flag scopes a query, it isn't a "dump everything" command. New `_recent_hits()` helper closes that gap: it pulls the agent's recency-ordered pool (`ORDER BY recorded_at DESC`, excluding `dropped`), then reranks *inside* the pool by recency (`W_RECENCY`) fused with the existing `KIND_WEIGHT`/`CONFIDENCE_WEIGHT` nudges, so a high-value `fact`/`lesson` can edge out a slightly newer `note` while only recent records are ever in play (default `RECENT_DEFAULT = 8`). `brief` returns them under a new `recent` key; `recall` folds them into `candidates`. Hits carry `"why": "recent (no query match)"` and are *not* graph-wired (no query → no Hebbian event), only staleness-touched. `summon.py` surfaces the set automatically (it dumps the whole brief) and its legend explains the new `why` code. Docs updated (`memory-protocol.md`, `memory-data-model.md`). No schema change.
+
 ## v3.2.1 — 2026-06-25 (plugin)
 
 - **Trim model-facing docs to what the agent acts on.** A reading agent has no memory of a pre-plugin past and never runs `/plugin update` itself, so SKILL.md, the references, and script `--help`/error text dropped (a) negation-against-history ("there is NO packaging/rebuild step", "no reinstall") and (b) human-operational update/install/marketplace instructions — those now live only in README.md and this changelog. Removed the `self-check` and `changelog` rows from SKILL.md's resource table (maintainer/verification meta, not work the agent loads); the files stay in the repo. Same wording cleanup in `agent-template.md`, `scripts-protocol.md`, `summon-agent-protocol.md`, `memory-protocol.md`, and the `summon.py`/`memory.py` user-facing strings. No behavior change.

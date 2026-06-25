@@ -4,6 +4,12 @@ Version history for the **Claude flavor** of the Professor Synapse skill. Check 
 
 ---
 
+## v2.5.0 — 2026-06-25
+
+- **No-query recall fallback: a bare summon now surfaces recent memory instead of nothing.** Keyword recall needs query terms, so `recall --agent <slug>` / `brief --agent <slug>` with **no `--query`** (or, for `brief`, a query that matched nothing) used to return empty even when the agent had plenty stored — the `--agent` flag scopes a query, it isn't a "dump everything" command. New `_recent_hits()` helper closes that gap: it pulls the agent's recency-ordered pool (`ORDER BY recorded_at DESC`, excluding `dropped`), then reranks *inside* the pool by recency (`W_RECENCY`) fused with the existing `KIND_WEIGHT`/`CONFIDENCE_WEIGHT` nudges, so a high-value `fact`/`lesson` can edge out a slightly newer `note` while only recent records are ever in play (default `RECENT_DEFAULT = 8`). `brief` returns them under a new `recent` key (fires on no-match, since `summon.py` auto-fills triggers as the query); `recall` folds them into `candidates` only when no query terms were supplied at all (an explicit query that misses still returns an honest empty). Hits carry `"why": "recent (no query match)"` and are *not* graph-wired (no query → no Hebbian event), only staleness-touched. `summon.py` surfaces the set automatically and its legend explains the new `why` code. Docs updated (`memory-protocol.md`, `memory-data-model.md`). No schema change.
+- **Backup write no longer fails on Google Drive / WSL mounts.** The atomic-write backup used `shutil.copy2`, which copies metadata via `os.utime`/`chmod` and raises `PermissionError` on network/cloud mounts; switched to `shutil.copyfile` (content only). Same fix the plugin flavor carries.
+- **UTF-8 stdout/stderr.** Force UTF-8 on stdio so emoji in memory output never crash with a cp1252 `UnicodeEncodeError` on Windows; no-op on WSL/Linux/macOS.
+
 ## v2.4.0 — 2026-06-23
 
 - **Split into two flavors.** The skill now ships as two folders. This is the **Claude flavor** (`professor-synapse-claude/`) — it keeps the Claude-specific machinery: the mandatory packaging workflow (`references/file-operations.md`), `rebuild-protocol.md`, codeload updates (`update-protocol.md` + `scripts/update.sh`), and `/mnt/skills/...` paths. A new **portable flavor** (`professor-synapse-skill/`) was extracted for any skills-aware assistant (Codex, etc.); it carries its own changelog.
