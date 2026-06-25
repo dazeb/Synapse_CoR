@@ -17,6 +17,10 @@ memory you build on top of it.
   - `summon-gate` (PreToolUse) — blocks file edits and memory writes until you
     summon an owning agent; memory **writes** additionally require the
     memory-agent.
+  - `read-gate` (PreToolUse) — blocks writing into a governed folder
+    (`agents/`, `scripts/`) until you've read that category's protocol this
+    session, and records an audit trail of which docs were read. Extend the
+    category→doc map in `hooks/read-gate.py`; disable with `READ_GATE_DISABLE=1`.
   - `persona-guard` (Stop) — nudges you back into character if a reply drops the
     active agent's emoji prefix.
   - `memory-nudge` (Stop) — reminds you to ask about saving after a stretch of

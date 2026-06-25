@@ -4,6 +4,10 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## v3.2.0 — 2026-06-25 (plugin)
+
+- **New `read-gate` hook: read-before-write enforcement for governed folders.** A PreToolUse hook blocks any `Write`/`Edit`/`MultiEdit`/`NotebookEdit` whose target lands in a gated category dir (default `agents/` and `scripts/`) until the session transcript shows the category's governing doc was read (`references/agent-template.md` for agents, `references/scripts-protocol.md` for scripts) — so agents/scripts get created by following the protocol, not improvised. The deny names the exact doc(s) to read (absolute path, user-data copy preferred over core) plus recommended extras; once read, further writes to that folder pass for the session. Each allowed gated write appends an audit record (category, doc, timestamp) to `<data>/.summon-state/readdocs-<session>.json`. Category→doc map (`REQUIRED_DOCS`) is a simple dict — extend it to `protocols`/`templates`/`references`; disable everything with `READ_GATE_DISABLE=1`. Fail-open. Wired as a second PreToolUse entry in `hooks/hooks.json`.
+
 ## v3.1.0 — 2026-06-25 (plugin)
 
 - **User-created supporting files are now first-class, in every category.** The plugin's writable data dir is a full parallel mirror of the shipped core: `agents/`, `scripts/`, `references/`, `templates/`, `protocols/`, and `memory/`. The SessionStart bootstrap pre-creates all of them, and they survive `/plugin update`. Drop a file in the matching subdir and **cite it** (backtick-wrapped relative path) in an agent; `summon.py` now resolves every cited resource **data-first, then core** and surfaces it as an **absolute path** in the boot package — so a user file shadows a shipped one of the same path, and references/scripts/templates/protocols load or run from any working directory. `RESOURCE_RE` extended to `references|templates|protocols|agents/*.md` + `scripts/*.{py,sh}`. Docs updated: SKILL.md storage section, `agent-template.md` (supporting-files table), `scripts-protocol.md` (core vs your scripts; stale `update.sh` row removed).

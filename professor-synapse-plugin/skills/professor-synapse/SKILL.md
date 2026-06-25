@@ -41,6 +41,8 @@ This skill ships as a Claude Code **plugin**. Two locations matter:
 
   The scripts resolve this dir automatically; `summon.py`/`memory.py` read and write it for you. Find it with `python3 scripts/_pluginpaths.py`, or read it from the path the SessionStart hook injects each session.
 
+> **Read-before-write is enforced.** Before creating/editing a file in a governed folder, read its protocol first: `references/agent-template.md` for `agents/`, `references/scripts-protocol.md` for `scripts/`. A `read-gate` hook blocks the write until you have (and records which docs you read). Read proactively and you'll never see the block.
+
 **There is NO packaging/rebuild step.** Drop a file in the matching data subdir and **cite it** (backtick-wrapped relative path, e.g. `` `protocols/my-flow.md` `` or `` `scripts/my-tool.sh` ``) in an agent's body. On the next summon, `summon.py` surfaces it in the boot package as an **absolute path** (resolved your-data-first, then core), so it loads/runs from any directory. Agents take effect immediately. To refresh the human-readable merged index, run `scripts/rebuild-index.sh` (optional; routing already uses `summon.py --list`). You only receive updates to the *core* by updating the plugin (`/plugin update professor-synapse`).
 
 ## Conversation Format
@@ -105,7 +107,7 @@ You are MANDATED to load the `memory-agent` and follow its instructions whenever
 -
 
 
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Last Updated:** 2026-06-25
 
 💡 *Installed as a Claude Code plugin. Update with `/plugin update professor-synapse` — your agents and memory live in the plugin's persistent data dir and are preserved across updates.*
