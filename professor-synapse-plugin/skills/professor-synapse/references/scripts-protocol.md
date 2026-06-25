@@ -8,6 +8,22 @@ Scripts are standalone, self-documenting CLI tools. Agents don't need to read so
 - **CLI-first design** — every script explains itself via `--help`
 - **Agents reference, not embed** — agent files point to scripts; they don't duplicate logic
 
+## Where scripts live (plugin)
+
+Two locations, mirroring the agents split:
+
+- **Core scripts** ship with the plugin (`<core>/scripts/`: `summon.py`,
+  `memory.py`, `rebuild-index.sh`, `_pluginpaths.py`). Read-only — they're
+  **replaced on every plugin update**, so don't edit them; your changes would be
+  lost.
+- **Your scripts** go in the writable **data** dir: `<data_root>/scripts/`. These
+  **survive updates**. Find `<data_root>` with `python3 scripts/_pluginpaths.py`.
+
+When an agent cites `` `scripts/[name].sh` ``, `summon.py` resolves it
+**data-first, then core**, and surfaces the **absolute** path in the boot
+package — so a user script shadows a core script of the same name, and either
+runs from any working directory.
+
 ## When to Create a Script
 
 Create a script when an agent needs to perform the same operation repeatedly:
@@ -97,20 +113,26 @@ In an agent's definition, add a **Scripts** section listing scripts the agent ma
 
 Agents should run `--help` first if uncertain about arguments or options.
 
-## Existing Scripts
+## Existing core scripts (shipped, read-only)
 
 | Script | Purpose | Help |
 |--------|---------|------|
-| `scripts/rebuild-index.sh` | Rebuild `agents/INDEX.md` from agent frontmatter | `bash scripts/rebuild-index.sh --help` |
-| `scripts/update.sh` | Fetch the latest release and build a merged update tree (preserves `memory/` + custom agents) | `bash scripts/update.sh --help` |
-| `scripts/memory.py` | Shared agent-tagged memory store (working + long-term) | `python3 scripts/memory.py --help` |
 | `scripts/summon.py` | Assemble an agent boot package (persona + recalled memory + loadable resources) | `python3 scripts/summon.py --help` |
+| `scripts/memory.py` | Shared agent-tagged memory store (working + long-term) | `python3 scripts/memory.py --help` |
+| `scripts/rebuild-index.sh` | Rebuild the merged `agents/INDEX.md` from agent frontmatter | `bash scripts/rebuild-index.sh --help` |
+| `scripts/_pluginpaths.py` | Resolve the writable data root (`python3 scripts/_pluginpaths.py` prints it) | — |
 
-## Adding a New Script
+(Updating is handled by Claude Code: `/plugin update professor-synapse`. There is
+no `update.sh`.)
 
-1. Create `scripts/[name].sh` (or `.py`)
-2. Implement `--help` following the template above
-3. Add a row to the **Existing Scripts** table in this file
-4. In any agent that uses the script, add a **Scripts** section pointing to it
+## Adding a New Script (yours)
 
-No need to update SKILL.md — this protocol is the catalog.
+1. Create `<data_root>/scripts/[name].sh` (or `.py`) — **not** in core, which is
+   overwritten on update. (`python3 scripts/_pluginpaths.py` prints `<data_root>`.)
+2. Implement `--help` following the template above.
+3. In the agent that uses it, add a **Scripts** section and cite
+   `` `scripts/[name].sh` `` in the body so `summon.py` surfaces it (absolute path,
+   data-first).
+
+No need to update SKILL.md or this file for your own scripts — citation is what
+wires them in.

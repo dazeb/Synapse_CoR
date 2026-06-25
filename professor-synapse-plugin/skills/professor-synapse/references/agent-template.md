@@ -79,13 +79,25 @@ When creating a new agent, first summon 🔎 Domain Researcher. Use their struct
 - **GUIDELINES**: Incorporate "Anti-Patterns to Avoid" and domain vocabulary
 - **Emoji/Title**: Use "Recommended Agent Configuration" suggestions
 
-## Scripts (Optional)
+## Supporting files (Optional) — scripts, references, templates, protocols
 
-If this agent needs to run the same operation repeatedly (rebuild a cache, fetch external data, transform files), create a script for it rather than embedding the steps in the agent's instructions.
+An agent can lean on supporting files instead of cramming everything into its
+instructions. Your data dir mirrors the core layout, with a writable home for
+each category (all survive plugin updates):
 
-**When a script would benefit this agent, follow `references/scripts-protocol.md`.**
+| Put it in `<data_root>/…` | For | Cite it in the agent as |
+|---|---|---|
+| `scripts/` | a repeated operation (rebuild a cache, fetch data, transform files) — see `references/scripts-protocol.md` | `` `scripts/[name].sh` `` / `` `scripts/[name].py` `` |
+| `references/` | reference material the agent reads | `` `references/[name].md` `` |
+| `templates/` | a reusable template the agent fills in | `` `templates/[name].md` `` |
+| `protocols/` | a step-by-step procedure the agent follows | `` `protocols/[name].md` `` |
 
-After creating the script, add a **Scripts** section to the agent file:
+**The rule that wires it up:** save the file in the matching subdir, then **cite
+its relative path in backticks** somewhere in the agent body. On the next summon,
+`summon.py` surfaces it in the boot package as an **absolute path** (resolved
+your-data-first, then core), so it loads or runs from any working directory — no
+packaging step. For scripts, also add a **Scripts** section so the invocation is
+obvious:
 
 ```markdown
 ## Scripts
@@ -95,13 +107,16 @@ After creating the script, add a **Scripts** section to the agent file:
 | `scripts/[name].sh` | What it does | `bash scripts/[name].sh --help` |
 ```
 
-The agent can then invoke `bash scripts/[name].sh --help` at runtime to get usage instructions without needing to read the source.
+A user file shadows a shipped core file of the same relative path, exactly like
+user agents override built-in agents.
+
 ## After Creation
 
-> **No packaging or reinstall step.** Your agents live in the plugin's writable
-> **data** dir (`<data_root>/agents/`), which is separate from the read-only core
-> and survives plugin updates. Saving the file there makes the agent available
-> immediately — `summon.py` merges it into the roster on its next run.
+> **No packaging or reinstall step.** Your agents (and their supporting files)
+> live in the plugin's writable **data** dir, which is separate from the
+> read-only core and survives plugin updates. Saving the file there makes it
+> available immediately — `summon.py` merges agents into the roster, and surfaces
+> cited supporting files, on its next run.
 
 ### Step 1: Save the Agent
 Create the file in the data agents dir, named `[domain]-[specialty].md`:

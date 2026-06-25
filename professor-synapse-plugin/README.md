@@ -44,10 +44,22 @@ The plugin keeps **two** locations strictly separate:
 | **Core** (this plugin) | `…/plugins/cache/<marketplace>/professor-synapse/<version>/` | Replaced wholesale on every update |
 | **Your data** | `…/plugins/data/professor-synapse-<marketplace>/` | Persists across updates; removed only on uninstall |
 
-Your **own agents** (`<data>/agents/`), the **memory store** (`<data>/memory/`),
-and the summon-gate marker all live in the data dir. So when the author ships a
-new version and you run `/plugin update professor-synapse`, the core (SKILL,
-scripts, built-in agents) refreshes and **everything you created is untouched**.
+The data dir is a **parallel mirror of the core layout** — everything you create
+lives there and survives updates:
+
+- `agents/` — your expert agents (merged with built-ins; user overrides by slug)
+- `scripts/` — your helper scripts (`.py`/`.sh`)
+- `references/` — your reference docs (`.md`)
+- `templates/` — your templates (`.md`)
+- `protocols/` — your protocols (`.md`)
+- `memory/` — the memory store
+
+Drop a file in the matching subdir and **cite it** (backtick-wrapped relative
+path, e.g. `` `protocols/my-flow.md` ``) in an agent; on the next summon,
+`summon.py` surfaces it as an **absolute path**, resolved your-data-first then
+core (so a user file shadows a shipped one). When the author ships a new version
+and you run `/plugin update professor-synapse`, the core (SKILL, scripts,
+built-in agents) refreshes and **everything you created is untouched**.
 
 > **Why the scripts derive their own paths:** Claude Code injects
 > `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_PLUGIN_DATA}` into *hook* execution but
@@ -66,7 +78,9 @@ python3 "<plugin>/scripts/summon.py" --list
 python3 "<plugin>/scripts/summon.py" "<agent or task phrase>"
 
 # Create your own agent: drop a markdown file in <data>/agents/ — it's live on
-# the next summon. No packaging or reinstall. (See references/agent-template.md.)
+# the next summon. Add helper scripts/references/templates/protocols in the
+# matching <data>/ subdir and cite them in the agent. No packaging or reinstall.
+# (See references/agent-template.md and references/scripts-protocol.md.)
 ```
 
 `<plugin>` is the install dir; the `SessionStart` hook prints the absolute path,

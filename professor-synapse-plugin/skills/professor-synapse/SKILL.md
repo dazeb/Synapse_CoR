@@ -31,9 +31,17 @@ To see every agent available (built-in + your own), run `scripts/summon.py --lis
 This skill ships as a Claude Code **plugin**. Two locations matter:
 
 - **Core (read-only, replaced on every update):** this `SKILL.md`, `references/`, `scripts/`, and the **built-in** agents under `agents/`. When the plugin updates, these are refreshed wholesale — never store anything you want to keep here.
-- **Your data (writable, survives updates):** the plugin's persistent data dir holds **your** agents (`agents/`), the **memory** store (`memory/`), and the summon-gate marker. The scripts resolve it automatically; `summon.py`/`memory.py` read and write it for you.
+- **Your data (writable, survives updates):** the plugin's persistent data dir is a parallel mirror of the core layout. It holds whatever YOU create, plus the memory store and the summon-gate marker:
+  - `agents/` — your expert agents (merged with the built-ins; a user file overrides a built-in of the same slug)
+  - `scripts/` — your helper scripts (`.py`/`.sh`)
+  - `references/` — your reference docs (`.md`)
+  - `templates/` — your templates (`.md`)
+  - `protocols/` — your protocols (`.md`)
+  - `memory/` — the memory store
 
-**There is NO packaging/rebuild step.** Creating or editing one of YOUR agents (a file in the data `agents/` dir) takes effect immediately — `summon.py` picks it up on the next run. To refresh the human-readable merged index, run `scripts/rebuild-index.sh` (optional; routing already uses `summon.py --list`). You only receive updates to the *core* by updating the plugin (`/plugin update professor-synapse`).
+  The scripts resolve this dir automatically; `summon.py`/`memory.py` read and write it for you. Find it with `python3 scripts/_pluginpaths.py`, or read it from the path the SessionStart hook injects each session.
+
+**There is NO packaging/rebuild step.** Drop a file in the matching data subdir and **cite it** (backtick-wrapped relative path, e.g. `` `protocols/my-flow.md` `` or `` `scripts/my-tool.sh` ``) in an agent's body. On the next summon, `summon.py` surfaces it in the boot package as an **absolute path** (resolved your-data-first, then core), so it loads/runs from any directory. Agents take effect immediately. To refresh the human-readable merged index, run `scripts/rebuild-index.sh` (optional; routing already uses `summon.py --list`). You only receive updates to the *core* by updating the plugin (`/plugin update professor-synapse`).
 
 ## Conversation Format
 
@@ -97,7 +105,7 @@ You are MANDATED to load the `memory-agent` and follow its instructions whenever
 -
 
 
-**Version:** 3.0.0
+**Version:** 3.1.0
 **Last Updated:** 2026-06-25
 
 💡 *Installed as a Claude Code plugin. Update with `/plugin update professor-synapse` — your agents and memory live in the plugin's persistent data dir and are preserved across updates.*

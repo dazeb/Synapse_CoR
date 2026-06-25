@@ -44,12 +44,14 @@ def main() -> int:
     except Exception:
         return 0
 
-    # 1. Ensure writable dirs exist.
-    try:
-        (data / "agents").mkdir(parents=True, exist_ok=True)
-        (data / "memory").mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
+    # 1. Ensure writable dirs exist — a parallel, persistent mirror of the shipped
+    #    core layout so users can drop their own agents, scripts, references,
+    #    templates, and protocols, plus the memory store.
+    for sub in ("agents", "scripts", "references", "templates", "protocols", "memory"):
+        try:
+            (data / sub).mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
     # 2. Inject routing context with absolute, runnable paths.
     context = (
@@ -64,8 +66,17 @@ def main() -> int:
         f"If no agent fits, record the decision:\n"
         f'  python3 "{summon}" --self --reason "why none fits"\n\n'
         "Note: ${CLAUDE_PLUGIN_ROOT}/${CLAUDE_PLUGIN_DATA} are NOT visible to the "
-        "Bash you run — use the absolute paths above. Your own agents and memory "
-        f"persist under {data} and survive plugin updates."
+        "Bash you run — use the absolute paths above.\n\n"
+        f"Your own content persists under {data} and survives plugin updates. Drop "
+        "files into the matching subdir, then cite them (backtick-wrapped relative "
+        "path) in an agent so summon.py surfaces them:\n"
+        f"  agents/     — your expert agents (merged with built-ins; override by slug)\n"
+        f"  scripts/    — your helper scripts (.py/.sh)\n"
+        f"  references/ — your reference docs (.md)\n"
+        f"  templates/  — your templates (.md)\n"
+        f"  protocols/  — your protocols (.md)\n"
+        "A user file shadows a shipped one of the same relative path, and nothing "
+        "here is touched when the plugin core updates."
     )
     out = {
         "hookSpecificOutput": {

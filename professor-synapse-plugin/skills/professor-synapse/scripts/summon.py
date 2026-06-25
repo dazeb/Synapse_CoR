@@ -48,7 +48,18 @@ except Exception:  # module missing (e.g. partial copy) -> behave in-place
     def resolve_data_root(skill_root):
         return str(skill_root)
 
-RESOURCE_RE = re.compile(r"`(references/[\w./-]+\.md|scripts/[\w./-]+\.(?:py|sh)|agents/[\w./-]+\.md)`")
+# Resource paths an agent may cite (backtick-wrapped). Markdown categories
+# (references/templates/protocols/agents) plus runnable scripts. Each resolves
+# data-root-first (user override) then skill-root (shipped core) — see
+# resolve_resource_path. Keep CATEGORY_DIRS in sync so the bootstrap pre-creates
+# a writable home for every category.
+RESOURCE_RE = re.compile(
+    r"`((?:references|templates|protocols|agents)/[\w./-]+\.md"
+    r"|scripts/[\w./-]+\.(?:py|sh))`"
+)
+
+# Per-category writable dirs under the data root (mirrors the shipped core layout).
+CATEGORY_DIRS = ("agents", "scripts", "references", "templates", "protocols")
 
 
 def die(msg, code=2):
@@ -200,10 +211,27 @@ def extract_scripts_section(body):
     return m.group(0).strip() if m else ""
 
 
-def collect_resources(agent, skill_table, exclude_text=""):
-    """Auto-extract referenced resources: paths cited in the agent body, enriched
-    with the SKILL.md 'when/what' descriptions where available. Paths already shown
-    in `exclude_text` (e.g. the Scripts section) are skipped to avoid duplication."""
+def resolve_resource_path(rel, skill_root, data_root):
+    """Absolute path for a cited resource, USER DATA overriding shipped CORE.
+
+    Tries <data_root>/rel first (a user-created reference/template/protocol/agent/
+    script), then <skill_root>/rel (the shipped core). Returns the first that
+    exists; if neither does, returns the core path as a best-guess so the boot
+    package still shows a runnable absolute path. Emitting absolute paths is what
+    makes the package work from any cwd — essential in a plugin, where the model's
+    working directory is the user's project, not the install dir."""
+    if data_root and os.path.abspath(data_root) != os.path.abspath(skill_root):
+        cand = os.path.join(data_root, rel)
+        if os.path.exists(cand):
+            return cand
+    return os.path.join(skill_root, rel)
+
+
+def collect_resources(agent, skill_table, skill_root, data_root, exclude_text=""):
+    """Auto-extract referenced resources: paths cited in the agent body, resolved
+    to absolute paths (user data overriding core) and enriched with the SKILL.md
+    'when/what' descriptions where available. Paths already shown in `exclude_text`
+    (e.g. the Scripts section) are skipped to avoid duplication."""
     resources = []
     seen = set()
     for m in RESOURCE_RE.finditer(agent["body"]):
@@ -212,7 +240,8 @@ def collect_resources(agent, skill_table, exclude_text=""):
             continue
         seen.add(p)
         when, what = skill_table.get(p, ("", ""))
-        resources.append({"path": p, "when": when, "what": what})
+        abspath = resolve_resource_path(p, skill_root, data_root)
+        resources.append({"path": p, "abspath": abspath, "when": when, "what": what})
     return resources
 
 
@@ -262,12 +291,14 @@ def render_markdown(agent, memory, resources, scripts_section, query_terms):
         L.append(scripts_section)
         L.append("")
     if resources:
-        L.append("Referenced by this agent — load with the `view` tool, run scripts with `python3`/`bash`:")
+        L.append("Referenced by this agent — open with the file/`view` tool, run scripts with "
+                 "`python3`/`bash`. Paths are absolute (resolved user-data-first, then core) so "
+                 "they work from any directory:")
         L.append("")
         L.append("| Resource | When to load | What it contains |")
         L.append("|----------|--------------|------------------|")
         for r in resources:
-            L.append(f"| `{r['path']}` | {r['when']} | {r['what']} |")
+            L.append(f"| `{r['abspath']}` | {r['when']} | {r['what']} |")
         L.append("")
     if not scripts_section and not resources:
         L.append("_This agent cites no external resources; work from the persona above._")
@@ -424,7 +455,7 @@ def main(argv=None):
     memory = recall_memory(skill_root, data_root, agent["slug"], query_terms, args.no_reinforce)
     skill_table = parse_skill_resources(skill_root)
     scripts_section = extract_scripts_section(agent["body"])
-    resources = collect_resources(agent, skill_table, exclude_text=scripts_section)
+    resources = collect_resources(agent, skill_table, skill_root, data_root, exclude_text=scripts_section)
 
     if args.json:
         print(json.dumps({
