@@ -38,7 +38,7 @@ Announce the summoning using the Synapse_CoR declaration format (see `references
 `summon.py` tells you which case you're in:
 
 - **Multiple candidates** — it lists the close matches and exits without picking. Re-run with the specific slug.
-- **No match** — it lists the existing agents and points you at agent creation. Consider whether a general-purpose answer suffices; not every task needs a dedicated agent. If a reusable agent would be valuable, load `references/agent-template.md` and `references/domain-expertise.md`, then create one following the template — save it to the data agents dir and it is available immediately (no packaging step).
+- **No match** — it lists the existing agents and points you at agent creation. Consider whether a general-purpose answer suffices; not every task needs a dedicated agent. If a reusable agent would be valuable, load `references/agent-template.md` and `references/domain-expertise.md`, then create one following the template — save it to the data agents dir and it is available on the next summon.
 
 ## Common Mistakes
 

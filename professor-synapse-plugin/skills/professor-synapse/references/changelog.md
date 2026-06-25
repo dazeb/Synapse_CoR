@@ -4,6 +4,10 @@ Version history for the Professor Synapse skill. Check this after fetching updat
 
 ---
 
+## v3.2.1 — 2026-06-25 (plugin)
+
+- **Trim model-facing docs to what the agent acts on.** A reading agent has no memory of a pre-plugin past and never runs `/plugin update` itself, so SKILL.md, the references, and script `--help`/error text dropped (a) negation-against-history ("there is NO packaging/rebuild step", "no reinstall") and (b) human-operational update/install/marketplace instructions — those now live only in README.md and this changelog. Removed the `self-check` and `changelog` rows from SKILL.md's resource table (maintainer/verification meta, not work the agent loads); the files stay in the repo. Same wording cleanup in `agent-template.md`, `scripts-protocol.md`, `summon-agent-protocol.md`, `memory-protocol.md`, and the `summon.py`/`memory.py` user-facing strings. No behavior change.
+
 ## v3.2.0 — 2026-06-25 (plugin)
 
 - **New `read-gate` hook: read-before-write enforcement for governed folders.** A PreToolUse hook blocks any `Write`/`Edit`/`MultiEdit`/`NotebookEdit` whose target lands in a gated category dir (default `agents/` and `scripts/`) until the session transcript shows the category's governing doc was read (`references/agent-template.md` for agents, `references/scripts-protocol.md` for scripts) — so agents/scripts get created by following the protocol, not improvised. The deny names the exact doc(s) to read (absolute path, user-data copy preferred over core) plus recommended extras; once read, further writes to that folder pass for the session. Each allowed gated write appends an audit record (category, doc, timestamp) to `<data>/.summon-state/readdocs-<session>.json`. Category→doc map (`REQUIRED_DOCS`) is a simple dict — extend it to `protocols`/`templates`/`references`; disable everything with `READ_GATE_DISABLE=1`. Fail-open. Wired as a second PreToolUse entry in `hooks/hooks.json`.

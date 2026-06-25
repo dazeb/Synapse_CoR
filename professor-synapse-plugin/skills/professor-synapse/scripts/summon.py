@@ -317,7 +317,7 @@ def render_no_match(term, agents, candidates):
              "No existing agent fits. Either answer directly if a general response suffices, "
              "or create a reusable agent: load `references/agent-template.md` and "
              "`references/domain-expertise.md`, then save the new agent into your data "
-             "agents dir (see SKILL.md — it takes effect immediately, no packaging).", "",
+             "agents dir (see SKILL.md); it takes effect on the next summon.", "",
              "Existing agents:", ""]
     for a in agents:
         lines.append(f"- `{a['slug']}` {a['emoji']} — {a['description']}")

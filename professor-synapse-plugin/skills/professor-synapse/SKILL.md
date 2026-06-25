@@ -26,12 +26,12 @@ Professor Synapse is the **router** for expert help. When a request arrives:
 
 To see every agent available (built-in + your own), run `scripts/summon.py --list`. This is the canonical, always-current roster — prefer it over reading a static index.
 
-## How this plugin stores things (read once)
+## Where things live (read once)
 
-This skill ships as a Claude Code **plugin**. Two locations matter:
+Two locations:
 
-- **Core (read-only, replaced on every update):** this `SKILL.md`, `references/`, `scripts/`, and the **built-in** agents under `agents/`. When the plugin updates, these are refreshed wholesale — never store anything you want to keep here.
-- **Your data (writable, survives updates):** the plugin's persistent data dir is a parallel mirror of the core layout. It holds whatever YOU create, plus the memory store and the summon-gate marker:
+- **Core (read-only):** this `SKILL.md`, `references/`, `scripts/`, and the **built-in** agents under `agents/`. Shipped; don't save your work here.
+- **Your data (writable):** a parallel mirror of the core layout holding whatever YOU create, plus the memory store:
   - `agents/` — your expert agents (merged with the built-ins; a user file overrides a built-in of the same slug)
   - `scripts/` — your helper scripts (`.py`/`.sh`)
   - `references/` — your reference docs (`.md`)
@@ -39,11 +39,11 @@ This skill ships as a Claude Code **plugin**. Two locations matter:
   - `protocols/` — your protocols (`.md`)
   - `memory/` — the memory store
 
-  The scripts resolve this dir automatically; `summon.py`/`memory.py` read and write it for you. Find it with `python3 scripts/_pluginpaths.py`, or read it from the path the SessionStart hook injects each session.
+  `summon.py`/`memory.py` resolve this dir for you. To target it directly, find it with `python3 scripts/_pluginpaths.py` or read the path the SessionStart hook injects each session.
 
 > **Read-before-write is enforced.** Before creating/editing a file in a governed folder, read its protocol first: `references/agent-template.md` for `agents/`, `references/scripts-protocol.md` for `scripts/`. A `read-gate` hook blocks the write until you have (and records which docs you read). Read proactively and you'll never see the block.
 
-**There is NO packaging/rebuild step.** Drop a file in the matching data subdir and **cite it** (backtick-wrapped relative path, e.g. `` `protocols/my-flow.md` `` or `` `scripts/my-tool.sh` ``) in an agent's body. On the next summon, `summon.py` surfaces it in the boot package as an **absolute path** (resolved your-data-first, then core), so it loads/runs from any directory. Agents take effect immediately. To refresh the human-readable merged index, run `scripts/rebuild-index.sh` (optional; routing already uses `summon.py --list`). You only receive updates to the *core* by updating the plugin (`/plugin update professor-synapse`).
+**To add your own content:** drop a file in the matching data subdir and **cite it** (backtick-wrapped relative path, e.g. `` `protocols/my-flow.md` `` or `` `scripts/my-tool.sh` ``) in an agent's body. On the next summon, `summon.py` surfaces it in the boot package as an **absolute path** (resolved your-data-first, then core), so it loads or runs from any directory; new agents join the roster immediately. `scripts/rebuild-index.sh` refreshes the human-readable merged index (optional — routing already uses `summon.py --list`).
 
 ## Conversation Format
 
@@ -78,7 +78,7 @@ After each interaction, capture what you learned:
 >  **Two-tier patterns**: Cross-cutting insights go in the **Global Learned Patterns** section below (note: edits here are to the read-only core and are overwritten on update — for durable cross-cutting learning, prefer saving a `lesson` to memory). Domain-specific insights go in YOUR agent's own **Learned Patterns** section, which lives in your data dir and persists.
 
 ### 6. **Save Memory**
-You are MANDATED to load the `memory-agent` and follow its instructions whenever a durable memory is worth saving (episodic, procedural, semantic, decisions, lessons, preferences, etc.). Memory lives in your persistent data dir and survives plugin updates.
+You are MANDATED to load the `memory-agent` and follow its instructions whenever a durable memory is worth saving (episodic, procedural, semantic, decisions, lessons, preferences, etc.).
 
 ## Your Resources
 
@@ -93,13 +93,11 @@ You are MANDATED to load the `memory-agent` and follow its instructions whenever
 | `references/agent-template.md`        | Only when creating a NEW agent                                  | Template structure + pattern format templates                                                                                    |
 | `references/domain-expertise.md`      | When mapping unfamiliar domains                                 | Domain mappings                                                                                                                  |
 | `references/scripts-protocol.md`      | When creating agents that need recurring scripts                | Script catalog and CLI design standards                                                                                          |
-| `references/self-check.md`            | After an update, or to verify an install                        | Repeatable PASS/FAIL verification of summoning, memory loop, and tests                                                          |
-| `references/changelog.md`             | When checking what changed                                      | What changed in each version                                                                                                     |
 
 ---
 ## Global Learned Patterns
 
->Cross-cutting patterns that apply across ALL agents. (Edits here live in the read-only core and are replaced on plugin update; for durable cross-cutting learning, save a `lesson` to memory.)
+>Cross-cutting patterns that apply across ALL agents. (Edits here live in the read-only core and aren't preserved; for durable cross-cutting learning, save a `lesson` to memory.)
 
 ### Effective Patterns
 -
@@ -107,7 +105,5 @@ You are MANDATED to load the `memory-agent` and follow its instructions whenever
 -
 
 
-**Version:** 3.2.0
+**Version:** 3.2.1
 **Last Updated:** 2026-06-25
-
-💡 *Installed as a Claude Code plugin. Update with `/plugin update professor-synapse` — your agents and memory live in the plugin's persistent data dir and are preserved across updates.*

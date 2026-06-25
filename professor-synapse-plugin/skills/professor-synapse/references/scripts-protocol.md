@@ -12,12 +12,10 @@ Scripts are standalone, self-documenting CLI tools. Agents don't need to read so
 
 Two locations, mirroring the agents split:
 
-- **Core scripts** ship with the plugin (`<core>/scripts/`: `summon.py`,
-  `memory.py`, `rebuild-index.sh`, `_pluginpaths.py`). Read-only — they're
-  **replaced on every plugin update**, so don't edit them; your changes would be
-  lost.
-- **Your scripts** go in the writable **data** dir: `<data_root>/scripts/`. These
-  **survive updates**. Find `<data_root>` with `python3 scripts/_pluginpaths.py`.
+- **Core scripts** are shipped (`<core>/scripts/`: `summon.py`, `memory.py`,
+  `rebuild-index.sh`, `_pluginpaths.py`). Read-only — don't edit them.
+- **Your scripts** go in the writable **data** dir: `<data_root>/scripts/`. Find
+  `<data_root>` with `python3 scripts/_pluginpaths.py`.
 
 When an agent cites `` `scripts/[name].sh` ``, `summon.py` resolves it
 **data-first, then core**, and surfaces the **absolute** path in the boot
@@ -122,13 +120,10 @@ Agents should run `--help` first if uncertain about arguments or options.
 | `scripts/rebuild-index.sh` | Rebuild the merged `agents/INDEX.md` from agent frontmatter | `bash scripts/rebuild-index.sh --help` |
 | `scripts/_pluginpaths.py` | Resolve the writable data root (`python3 scripts/_pluginpaths.py` prints it) | — |
 
-(Updating is handled by Claude Code: `/plugin update professor-synapse`. There is
-no `update.sh`.)
-
 ## Adding a New Script (yours)
 
-1. Create `<data_root>/scripts/[name].sh` (or `.py`) — **not** in core, which is
-   overwritten on update. (`python3 scripts/_pluginpaths.py` prints `<data_root>`.)
+1. Create `<data_root>/scripts/[name].sh` (or `.py`) — in your data dir, not core.
+   (`python3 scripts/_pluginpaths.py` prints `<data_root>`.)
 2. Implement `--help` following the template above.
 3. In the agent that uses it, add a **Scripts** section and cite
    `` `scripts/[name].sh` `` in the body so `summon.py` surfaces it (absolute path,

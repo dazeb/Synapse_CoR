@@ -33,8 +33,8 @@ Verbs (run `python3 memory.py <verb> --help` for options):
   render     Print working memory as markdown.
   export     Dump long-term db to JSON (optionally one agent's).
 
-Persistence: this store lives inside the Professor Synapse skill. To make a change
-survive, rebuild the skill per references/rebuild-protocol.md and reinstall it.
+Persistence: the store lives in the writable data dir (resolved automatically;
+override with --root). Writes are durable on the spot.
 """
 
 import argparse
@@ -173,8 +173,8 @@ def migrate_working(data):
     meta = data.setdefault("meta", {})
     v = meta.get("schema_version", SCHEMA_VERSION)
     if v > SCHEMA_VERSION:
-        sys.exit(f"memory.json is schema_version {v}, newer than this skill "
-                 f"({SCHEMA_VERSION}). Reinstall the matching skill version.")
+        sys.exit(f"memory.json is schema_version {v}, newer than this code "
+                 f"({SCHEMA_VERSION}); the data dir was written by a newer version.")
     changed = False
     while v < SCHEMA_VERSION:
         fn = MIGRATIONS.get(v)

@@ -83,7 +83,7 @@ When creating a new agent, first summon 🔎 Domain Researcher. Use their struct
 
 An agent can lean on supporting files instead of cramming everything into its
 instructions. Your data dir mirrors the core layout, with a writable home for
-each category (all survive plugin updates):
+each category:
 
 | Put it in `<data_root>/…` | For | Cite it in the agent as |
 |---|---|---|
@@ -112,11 +112,10 @@ user agents override built-in agents.
 
 ## After Creation
 
-> **No packaging or reinstall step.** Your agents (and their supporting files)
-> live in the plugin's writable **data** dir, which is separate from the
-> read-only core and survives plugin updates. Saving the file there makes it
-> available immediately — `summon.py` merges agents into the roster, and surfaces
-> cited supporting files, on its next run.
+> Your agents (and their supporting files) live in the plugin's writable **data**
+> dir, separate from the read-only core. Saving the file there makes it available
+> on the next `summon.py` run — agents are merged into the roster, cited
+> supporting files are surfaced.
 
 ### Step 1: Save the Agent
 Create the file in the data agents dir, named `[domain]-[specialty].md`:

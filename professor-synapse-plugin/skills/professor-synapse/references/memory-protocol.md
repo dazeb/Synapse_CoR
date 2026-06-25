@@ -139,10 +139,9 @@ It folds the new evidence into `source` (appended to the existing trail, or `--r
 ## Persisting (important)
 
 The store lives in the plugin's writable **data** dir (`<data_root>/memory/`),
-which is separate from the read-only core and survives plugin updates. A
-`memory.py` write lands there and is durable immediately — there is no rebuild or
-reinstall step, and updating the plugin will not touch it. (`memory.py` resolves
-the data dir automatically; pass `--root <dir>` only to target a different store.)
+separate from the read-only core. A `memory.py` write lands there and is durable
+immediately. (`memory.py` resolves the data dir automatically; pass
+`--root <dir>` only to target a different store.)
 If code execution is unavailable, you cannot write; tell the user and offer the
 memory as text (`render`).
 
