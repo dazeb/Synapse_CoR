@@ -1,0 +1,10 @@
+# Runtime/data artifacts. In a real install these live in the plugin DATA dir,
+# never in the core. But running the scripts in-place (dev checkout, no plugin
+# env) writes them under the skill dir — keep them out of the committed core.
+skills/professor-synapse/.summon-state/
+skills/professor-synapse/memory/
+skills/professor-synapse/agents/INDEX.md.tmp
+
+# Python bytecode
+__pycache__/
+*.pyc

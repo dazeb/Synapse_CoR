@@ -1,0 +1,18 @@
+{
+  "name": "professor-synapse",
+  "owner": {
+    "name": "Joseph Rosenbaum",
+    "url": "https://github.com/profsynapse"
+  },
+  "metadata": {
+    "description": "Professor Synapse for Claude Code — summon expert agents, persistent memory, on-persona enforcement.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "professor-synapse",
+      "source": "./professor-synapse-plugin",
+      "description": "Router that summons expert agents on demand, with persistent agent-tagged memory and a summon-gate. Your agents and memory live in the plugin data dir and survive updates."
+    }
+  ]
+}
